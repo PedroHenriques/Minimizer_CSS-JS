@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.0.0				 #
+ # Ruby Minimizer for CSS and JS files v1.0.1				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #
@@ -16,6 +16,7 @@ begin
 	minimize = Minimize.new()
 
 	puts "watching for changes..."
+	puts "=> To terminate type CTRL-C"
 
 	# endless loop
 	# exit the app by terminating the console task (EX: CTRL + c)
