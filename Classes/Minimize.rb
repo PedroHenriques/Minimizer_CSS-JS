@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.0.2				 #
+ # Ruby Minimizer for CSS and JS files v1.0.3				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #
@@ -79,6 +79,9 @@ class Minimize
 
 					# if we're joining multiple files into 1 .min file
 					if file.is_a?(Array)
+						# grab the location the joined.min file should be stored
+						joined_folder = file.shift
+
 						# grab the first file in the array of files
 						file_current = file.first
 					else # minimizing a file on its own
@@ -96,7 +99,7 @@ class Minimize
 					else
 						if file.is_a?(Array)
 							# file is a joint minimized file, so create it in the up most folder of this watch_list item
-							file_min_path = "#{item[:path]}/joined.min#{file_detail[1].slice(pos_aux..-1)}"
+							file_min_path = "#{joined_folder}/joined.min#{file_detail[1].slice(pos_aux..-1)}"
 						else
 							# file is being minimized individualy, so keep file name and add .min to it
 							file_min_path = "#{file_detail[0]}/#{file_detail[1].slice(0...pos_aux)}.min#{file_detail[1].slice(pos_aux..-1)}"
@@ -232,6 +235,10 @@ class Minimize
 						# all these files will be returned inside an array
 						result.push(Array.new)
 
+						# store the path where the joined.min file should be stored
+						# will be added back in later, if at least 1 file path remains
+						path_joined_file = wl_item.shift.to_s.strip
+
 						# grab the first element of the array
 						wl_item_current = wl_item.shift.to_s.strip
 
@@ -328,12 +335,23 @@ class Minimize
 						end
 						
 						# if this wl_item item isn't empty (only when we're joining multiple files)
-						if joining and !wl_item.empty?
-							# grab next item and let the loop keep going
-							wl_item_current = wl_item.shift.to_s.strip
+						if joining
+							if !wl_item.empty?
+								# grab next item and let the loop keep going
+								wl_item_current = wl_item.shift.to_s.strip
+							else
+								# insert the joined.min file's location in index 0 of this batch of files
+								if result.last.length > 0
+									result.last.unshift(path_joined_file)
+								end
+
+								# there are no more itms in this wl_item item
+								# move on to next one
+								break
+							end
 						else
-							# there are no more itms in this joining array
-							# move on to next wl_item item
+							# there are no more itms in this wl_item item
+							# move on to next one
 							break
 						end
 					end while true
@@ -357,7 +375,11 @@ class Minimize
 						# these files will be joined, so return them all inside an array
 						files.push(Array.new)
 
-						# grab the first element of the array
+						# store the path where the joined.min file should be stored
+						# will be added back in later, if at least 1 file path remains
+						path_joined_file = path.shift.to_s.strip
+
+						# grab the first file of the array
 						path_current = path.shift.to_s.strip
 
 						# joining multiple files
@@ -375,29 +397,40 @@ class Minimize
 						# split the watch list file's name from the directory path
 						file_detail = File.split(path_current)
 
-						# check if the file exists and is a supported file type and isn't empty
-						if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last) and File.new(path_current).size != 0
-							# all OK, add the path to the result set
-							if joining
+						# depending on the joining status, process this path
+						if joining
+							# check if the file exists and is a supported file type and isn't empty
+							if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last) and File.new(path_current).size != 0
+								# all OK, add the path to the result set
 								files.last.push(path_current)
+							end
 
-								# if this path_list item isn't empty
-								if !path.empty?
-									# grab next item and let the loop keep going
-									path_current = path.shift.to_s.strip
-								else
-									# there are no more itms in this joining array
-									# move on to next path_list item
-									break
-								end
+							# if this path_list item isn't empty
+							if !path.empty?
+								# grab next file and let the loop keep going
+								path_current = path.shift.to_s.strip
 							else
-								files.push(path_current)
-
-								# this path was pointing to a file, move on to next path_list item
+								# there are no more items in this joining array
+								# move on to next path_list item
 								break
 							end
+						else
+							# check if the file exists and is a supported file type and isn't empty
+							if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last) and File.new(path_current).size != 0
+								# all OK, add the path to the result set
+								files.push(path_current)
+							end
+
+							# this path was pointing to a file, move on to next path_list item
+							break
 						end
 					end while true
+
+					# if joining and at least 1 file remains
+					# insert the joined.min file's location in index 0 of this batch of files
+					if joining and files.last.length > 0
+						files.last.unshift(path_joined_file)
+					end
 				}
 
 				files
@@ -408,6 +441,8 @@ class Minimize
 
 		# receives a path to a folder and seaches for files that match the options
 		# will ignore all files that have as name: *.min.[one of the valid file types]
+		# if joining on the received path, the first entry on each returned array is the
+		# path to store that joined.min file
 		def search_files(dir_path, dir_opts)
 			begin
 				dir_path = dir_path.to_s.strip
@@ -449,6 +484,9 @@ class Minimize
 				# if the files found in this folder are to be joined into 1 .min file
 				if opts.include?("join")
 					joining = true
+					
+					# local variable to store the location for the joined file of each file type
+					joined_file_location = joining_hash.clone
 				else
 					# not joining these files
 					joining = false
@@ -477,9 +515,20 @@ class Minimize
 						if joining
 							# check what file type we're dealing with -> find the last "." index
 							found_file_aux = found_file.length - found_file.reverse.index(".")
+							found_file_type = found_file.slice(found_file_aux..-1)
+
+							# check if this file changes the location the joined.min file should be stored in
+							file_full_path = "#{dir_path}/#{found_file}"
+							if joined_file_location[found_file_type].empty?
+								# 1st file we're checking, so store it's parent folder path
+								joined_file_location[found_file_type] = File.split(file_full_path)[0]
+							elsif !joined_file_location[found_file_type].eql?(File.split(file_full_path)[0])
+								# there is already a temporary location, so check against the current file's location
+								joined_file_location[found_file_type] = common_path(joined_file_location[found_file_type], File.split(file_full_path)[0])
+							end
 
 							# add this file to the respective file type in the temp hash
-							joining_hash[found_file.slice(found_file_aux..-1)].push("#{dir_path}/#{found_file}")
+							joining_hash[found_file_type].push(file_full_path)
 						else
 							files.push("#{dir_path}/#{found_file}")
 						end
@@ -491,9 +540,13 @@ class Minimize
 
 				# if joining, add all the arrays to the result set
 				if joining
-					joining_hash.each_value { |value|
+					joining_hash.each { |key,value|
 						# if this file type has at least 1 file found, add it to the result set
 						if !value.empty?
+							# add to 1st position of the array the location for the joined.min file
+							value.unshift(joined_file_location[key])
+
+							# add the array to the result set
 							files.push(value)
 						end
 					}
@@ -851,6 +904,47 @@ class Minimize
 			else
 				# the file and the folder are unrelated
 				-1
+			end
+		end
+
+		# receives 2 absolute paths
+		# returns the common part of the 2 paths OR empty if there is no common part
+		def common_path(path1, path2)
+			path1 = File.absolute_path(path1.to_s.strip)
+			path2 = File.absolute_path(path2.to_s.strip)
+
+			# if the 2 paths are exactly the same, return them
+			if path1.eql?(path2)
+				return path1
+			end
+
+			# split both paths into each directory node
+			path1_detail = path1.split("/")
+			path2_detail = path2.split("/")
+
+			# store the number of indexes in both paths structure
+			path1_max_index = path1_detail.length - 1
+			path2_max_index = path2_detail.length - 1
+
+			# loop throught the nodes of path1 and check what matches with path2
+			i = 0
+			while i <= path1_max_index and i <= path2_max_index
+				# check if this current node matches in boths paths
+				if !path1_detail[i].eql?(path2_detail[i])
+					# the paths diverge on this node, exit loop
+					break
+				end
+
+				i += 1
+			end
+
+			# build the common part of the 2 paths
+			if i == 0
+				# nothing in common
+				""
+			else
+				# the last common node is in i-1
+				path1_detail.slice(0...i).join("/")
 			end
 		end
 end

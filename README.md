@@ -4,7 +4,7 @@
 Light weight and self contained (no extra packages/dependencies required)
 
 ## What this application will do for you
-This application will condense CSS and JavaScript code down to 1 line by removing comments, line breaks and other pieces of text unecessary for the browser to interpret your CSS or Javasript code.
+This application will condense CSS and JavaScript code down to 1 line by removing comments, line breaks and other pieces of text unecessary for the browser to interpret your CSS or Javascript code.
 
 This minimization process will significantly reduce the size of your files and thus the load time of your websites.
 
