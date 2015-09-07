@@ -45,7 +45,12 @@ Each path can be either absolute or relative to "app.rb" and can point to a file
 
 The syntax to be used for each line is:
 
-`path/to/file/or/folder [option1|option2|...]`
+File | Syntax
+:--- | :---
+watch_list.txt | path/to/file/or/folder [option1&#124;option2&#124;...] {location for minimized files}
+ignore_list.txt | path/to/file/or/folder [option1&#124;option2&#124;...]
+
+**NOTE:** the paths provided to the application can not contain any of the following characters `[]{}`, since those are used to identify the options and the minimized file's location.
 
 #### Options:
 
@@ -65,6 +70,18 @@ This means it will search and minimize all .css and .js files, searching in all 
 
 Aditionaly, if options are passed but no specific file type, all supported file types will be assumed.
 
+#### Location where the minimized file(s) will be created:
+
+For each entry of the watch list you can specify where you want the resulting minimized files to be stored.
+
+The paths provided can be absolute or relative to "app.rb".  
+Any folders in the path that don't exist will be created.
+
+If no destination is provided the following default behaviours will be used:  
+- Files being minimized individualy will be placed in the same folder as their source file
+- Files being minimized together into 1 ".min" file will be placed in the last folder common to all the relevant source files  
+Example: if the source files are `C:/xampp/htdocs/project/css/main.css` and `C:/xampp/htdocs/project/css/helpers/tables.css` then the minimized file will be placed in `C:/xampp/htdocs/project/css`
+
 ## Examples
 
 ### 1)
@@ -72,7 +89,7 @@ watch_list.txt | ignore_list.txt
 :--- | :---
 C:/xampp/htdocs/website [css&#124;nosub] | C:/xampp/htdocs/website/buttons.css
 
-All .css files inside the website folder, not counting files inside any subfolders and with the exception of buttons.css, will be minimized individualy.
+All .css files inside the website folder, not counting files inside any subfolders and with the exception of buttons.css, will be minimized individualy, with the resulting ".min" files placed in the same folder as their respective source files.
 
 ### 2)
 watch_list.txt | ignore_list.txt
@@ -80,18 +97,19 @@ watch_list.txt | ignore_list.txt
 C:/xampp/htdocs/website [join] | C:/xampp/htdocs/website/temp [css]
 
 All .js files inside the website folder and its subfolders will be minimized into 1 single .min file named "joined.min.js".  
-All .css files inside the website folder and its subfolders, except the temp subfolder, will be minimized into 1 single .min file named "joined.min.css".
+All .css files inside the website folder and its subfolders, except the temp subfolder, will be minimized into 1 single .min file named "joined.min.css".  
+Both of the resulting minimized files will be placed in the last folder common to their respective relevant source files.
 
 ### 3)
 watch_list.txt | ignore_list.txt
 :--- | :---
 C:/xampp/htdocs/website [js&#124;join] | C:/xampp/htdocs/website/slider.js [nojoin]
-C:/xampp/htdocs/website/slider.js | 
+C:/xampp/htdocs/website/slider.js {C:/xampp/htdocs/website/assets} | 
 C:/xampp/htdocs/website/css/buttons.css | 
 
-All .js files inside the website folder and its subfolders, with the exception of slider.js, will be minimized into 1 single .min file named "joined.min.js".  
-The file slider.js will be minimized individualy in "slider.min.js".  
-The file buttons.css will be minimized individualy in "buttons.min.css".
+All .js files inside the website folder and its subfolders, with the exception of slider.js, will be minimized into 1 single ".min" file named "joined.min.js" and placed in the last folder common to all the relevant source files.  
+The file slider.js will be minimized individualy in "slider.min.js", placed in C:/xampp/htdocs/website/assets.  
+The file buttons.css will be minimized individualy in "buttons.min.css", placed in the same folder as the source file.
 
 **NOTE:** if slider.js, in ignore_list.txt, doesn't have the "nojoin" option, then it won't be minimized, individualy or joined, even if slider.js is in watch_list.txt.
 

@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.0.3				 #
+ # Ruby Minimizer for CSS and JS files v1.0.4				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #
@@ -36,6 +36,13 @@ class Minimize
 	# receives an integer representing the numer of seconds to wait between loops
 	def watch(sleep_time=5)
 		sleep_time = sleep_time.to_i
+
+		# sanitize sleep_time
+		# sleep_time has to be at least 1 second
+		if sleep_time < 1
+			# use the default value
+			sleep_time = 5
+		end
 		
 		begin
 			# check if the watch and ignore lists are up-to-date
@@ -54,13 +61,22 @@ class Minimize
 				files = Array.new
 				if File.directory?(item[:path])
 					# navigate this folder and search all the files that match the criteria
-					files = search_files(item[:path], item[:opts])
+					files = search_files(item[:path], item[:opts], item[:min_path])
 				elsif File.exist?(item[:path])
 					# store the file
-					files.push(item[:path])
+					files.push({
+						# if no destination for the .min file was provided, store it in the same folder as the source file
+						:min_path => (item[:min_path].empty? ? File.split(item[:path])[0] : item[:min_path]),
+						:file_paths => item[:path]
+					})
 				else
 					puts "\n\r=> WARNING: The path \"#{item[:path].to_s}\" in the watch list doesn't exist!"
 
+					next
+				end
+
+				# if no files were found, move to next watch_list element
+				if files.empty?
 					next
 				end
 
@@ -72,20 +88,21 @@ class Minimize
 
 				# loop through each validated file
 				files.each { |file|
-					# if this file is an empty array of files or an empty string, move to next files item
-					if file.empty?
+					# if this file has an empty array of files or an empty string, move to next files item
+					if file[:file_paths].empty?
 						next
 					end
 
 					# if we're joining multiple files into 1 .min file
-					if file.is_a?(Array)
-						# grab the location the joined.min file should be stored
-						joined_folder = file.shift
+					if file[:file_paths].is_a?(Array)
+						joining = true
 
 						# grab the first file in the array of files
-						file_current = file.first
+						file_current = file[:file_paths].first
 					else # minimizing a file on its own
-						file_current = file
+						joining = false
+
+						file_current = file[:file_paths]
 					end
 					
 					# split the file's directory path from file name
@@ -97,19 +114,19 @@ class Minimize
 						# ignore if the file doesn't have a "." or no file type
 						next
 					else
-						if file.is_a?(Array)
+						if joining
 							# file is a joint minimized file, so create it in the up most folder of this watch_list item
-							file_min_path = "#{joined_folder}/joined.min#{file_detail[1].slice(pos_aux..-1)}"
+							file_min_path = "#{file[:min_path]}/joined.min#{file_detail[1].slice(pos_aux..-1)}"
 						else
 							# file is being minimized individualy, so keep file name and add .min to it
-							file_min_path = "#{file_detail[0]}/#{file_detail[1].slice(0...pos_aux)}.min#{file_detail[1].slice(pos_aux..-1)}"
+							file_min_path = "#{file[:min_path]}/#{file_detail[1].slice(0...pos_aux)}.min#{file_detail[1].slice(pos_aux..-1)}"
 						end
 					end
 
 					# if the minimized file isn't up-to-date
-					if !min_up_to_date(file_min_path, file.clone) # pass a clone of file to avoid loosing information in the variable file
+					if !min_up_to_date(file_min_path, file[:file_paths].clone) # pass a clone of file to avoid loosing information in the variable file
 						# create the raw version of the minimized file
-						if create_min_file(file_min_path, file.clone) # pass a clone of file to avoid loosing information in the variable file
+						if create_min_file(file_min_path, file[:file_paths].clone) # pass a clone of file to avoid loosing information in the variable file
 							# process this file's minimization
 							if minimize_file(file_min_path)
 								# display message informing the file was created/updated
@@ -156,20 +173,36 @@ class Minimize
 				end
 
 				list_raw = Array.new
+				line_count = 0
 				File.new(path, "r").each { |line|
+					# add 1 to the line counter
+					line_count += 1
+
 					# make sure the path are using /
 					line = line.to_s.strip.gsub(/\\/, "/")
 
-					# separate the path from the options
-					if line.match(/\[\D+\]$/) === nil
-						# if no options were passed, assume default opts
-						line_data = {:path => File.absolute_path(line.chomp), :opts => @default_opts}
-					else
-						# find the index where the options start
-						pos_opts_i = line.index(/\[\D+\]$/)
+					line_data = {
+						:path => "",
+						:opts => "",
+						:min_path => ""
+					}
+
+					# find the index where the options start
+					pos_opts_i = line.index(/\[/)
+					# if there are options provided, process them
+					if pos_opts_i != nil
+						# find the index where the options end
+						pos_opts_e = line.index(/\]/)
+
+						# if there is no ], give msg to user and skip this line
+						if pos_opts_e === nil
+							puts "\n\r=> WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the options."
+
+							next
+						end
 
 						# grab the options
-						aux_opts_a = line.slice(pos_opts_i+1...-1).strip.chomp.downcase.split("|")
+						aux_opts_a = line.slice(pos_opts_i+1...pos_opts_e).strip.chomp.downcase.split("|")
 
 						# if the options don't include a file type, add all of the valid file types
 						has_ftype = false
@@ -185,16 +218,54 @@ class Minimize
 						end
 
 						# convert array into string
-						aux_opts = aux_opts_a.join("|")
-
-						line_data = {:path => File.absolute_path(line.slice(0...pos_opts_i).strip.chomp), :opts => aux_opts}
+						line_data[:opts] = aux_opts_a.join("|")
+					else
+						# else use the default options
+						line_data[:opts] = @default_opts
 					end
 
+					# find the index where the .min file's location starts
+					pos_min_i = line.index(/\{/)
+					# if a location for the .min files was provided, process it
+					if pos_min_i != nil
+						# find the index where the .min file's location ends
+						pos_min_e = line.index(/\}/)
+
+						# if there is no }, give msg to user and skip this line
+						if pos_min_e === nil
+							puts "\n\r=> WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the minimized file's location."
+
+							next
+						end
+
+						# grab the path and convert to absolute
+						line_data[:min_path] = File.absolute_path(line.slice(pos_min_i+1...pos_min_e).strip.chomp)
+					end
+
+					# grab the path of the file to watch/ignore
+					if pos_opts_i != nil and pos_min_i != nil
+						if pos_opts_i < pos_min_i
+							pos_path_e = pos_opts_i - 1
+						else
+							pos_path_e = pos_min_i - 1
+						end
+					elsif pos_opts_i != nil
+						pos_path_e = pos_opts_i - 1
+					elsif pos_min_i != nil
+						pos_path_e = pos_min_i - 1
+					else
+						pos_path_e = -1
+					end
+					line_data[:path] = File.absolute_path(line.slice(0..pos_path_e).strip.chomp)
+
+					# add the data to the list
 					list_raw.push(line_data)
 				}
 
 				# sort ignore list by path from the lower to the higher path
-				list_raw.sort! {|h1,h2| h2[:path] <=> h1[:path]}
+				if !list_raw.empty?
+					list_raw.sort! {|h1,h2| h2[:path] <=> h1[:path]}
+				end
 
 				# store the list in the respective class variable
 				if item === 0
@@ -211,7 +282,7 @@ class Minimize
 				elsif item === 1
 					puts "\n\r=> WARNING: There was a problem reading the \"#{@watch_path}\" file. Please make sure such a file exists."
 				else
-					puts "\n\rinvalid parameter in build_list method"
+					puts "\n\r=> ERROR: invalid parameter in build_list method"
 				end
 				
 				raise e
@@ -227,25 +298,26 @@ class Minimize
 					return list
 				end
 
-				# loop each watch list item
+				# local variable where the result set will be stored
 				result = Array.new
+
+				# loop each watch list item
 				list.each { |wl_item|
 					# if this watch list item is an array, we're joining the array's files into 1 .min file
-					if wl_item.is_a?(Array)
+					if wl_item[:file_paths].is_a?(Array)
 						# all these files will be returned inside an array
-						result.push(Array.new)
+						result.push({
+							:min_path => wl_item[:min_path],
+							:file_paths => Array.new
+						})
 
-						# store the path where the joined.min file should be stored
-						# will be added back in later, if at least 1 file path remains
-						path_joined_file = wl_item.shift.to_s.strip
-
-						# grab the first element of the array
-						wl_item_current = wl_item.shift.to_s.strip
+						# grab the first file path from the array
+						wl_item_current = wl_item[:file_paths].shift.to_s.strip
 
 						joining = true
 					else
 						# path is pointing to a file, use it as is
-						wl_item_current = wl_item
+						wl_item_current = wl_item[:file_paths].to_s.strip
 
 						# we're not joining multiple files
 						joining = false
@@ -324,9 +396,12 @@ class Minimize
 							# if this file isn't covered by the ignore list, watch it
 							if to_watch
 								if joining
-									result.last.push(wl_item_current)
+									result.last[:file_paths].push(wl_item_current)
 								else
-									result.push(wl_item_current)
+									result.push({
+										:min_path => wl_item[:min_path],
+										:file_paths => wl_item_current
+									})
 
 									# this path was pointing to a file, move on to next watch list item
 									break
@@ -336,15 +411,10 @@ class Minimize
 						
 						# if this wl_item item isn't empty (only when we're joining multiple files)
 						if joining
-							if !wl_item.empty?
+							if !wl_item[:file_paths].empty?
 								# grab next item and let the loop keep going
-								wl_item_current = wl_item.shift.to_s.strip
+								wl_item_current = wl_item[:file_paths].shift.to_s.strip
 							else
-								# insert the joined.min file's location in index 0 of this batch of files
-								if result.last.length > 0
-									result.last.unshift(path_joined_file)
-								end
-
 								# there are no more itms in this wl_item item
 								# move on to next one
 								break
@@ -363,7 +433,7 @@ class Minimize
 			end
 		end
 
-		# receives an array with file paths and validates them
+		# receives an array of hashes with file paths and validates them
 		# checks if they exist and if they are of a supported type
 		def validate_files(path_list)
 			begin
@@ -371,22 +441,21 @@ class Minimize
 
 				path_list.each { |path|
 					# if path is an array, then we're joining all it's files into 1 .min file
-					if path.is_a?(Array)
+					if path[:file_paths].is_a?(Array)
 						# these files will be joined, so return them all inside an array
-						files.push(Array.new)
-
-						# store the path where the joined.min file should be stored
-						# will be added back in later, if at least 1 file path remains
-						path_joined_file = path.shift.to_s.strip
+						files.push({
+							:min_path => path[:min_path],
+							:file_paths => Array.new
+						})
 
 						# grab the first file of the array
-						path_current = path.shift.to_s.strip
+						path_current = path[:file_paths].shift.to_s.strip
 
 						# joining multiple files
 						joining = true
 					else
 						# path is pointing to a file, use it as is
-						path_current = path
+						path_current = path[:file_paths].to_s.strip
 
 						# not joining multiple files
 						joining = false
@@ -402,13 +471,13 @@ class Minimize
 							# check if the file exists and is a supported file type and isn't empty
 							if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last) and File.new(path_current).size != 0
 								# all OK, add the path to the result set
-								files.last.push(path_current)
+								files.last[:file_paths].push(path_current)
 							end
 
 							# if this path_list item isn't empty
-							if !path.empty?
+							if !path[:file_paths].empty?
 								# grab next file and let the loop keep going
-								path_current = path.shift.to_s.strip
+								path_current = path[:file_paths].shift.to_s.strip
 							else
 								# there are no more items in this joining array
 								# move on to next path_list item
@@ -418,19 +487,16 @@ class Minimize
 							# check if the file exists and is a supported file type and isn't empty
 							if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last) and File.new(path_current).size != 0
 								# all OK, add the path to the result set
-								files.push(path_current)
+								files.push({
+									:min_path => path[:min_path],
+									:file_paths => path_current
+								})
 							end
 
 							# this path was pointing to a file, move on to next path_list item
 							break
 						end
 					end while true
-
-					# if joining and at least 1 file remains
-					# insert the joined.min file's location in index 0 of this batch of files
-					if joining and files.last.length > 0
-						files.last.unshift(path_joined_file)
-					end
 				}
 
 				files
@@ -443,10 +509,11 @@ class Minimize
 		# will ignore all files that have as name: *.min.[one of the valid file types]
 		# if joining on the received path, the first entry on each returned array is the
 		# path to store that joined.min file
-		def search_files(dir_path, dir_opts)
+		def search_files(dir_path, dir_opts, min_path)
 			begin
 				dir_path = dir_path.to_s.strip
 				dir_opts = dir_opts.to_s.strip
+				min_path = min_path.to_s.strip
 
 				# if the path doesn't point to a folder, return
 				if !File.directory?(dir_path)
@@ -479,6 +546,7 @@ class Minimize
 				end
 
 				# local variable where the files found will be stored
+				# as well as the path where their .min files should be stored
 				files = Array.new
 
 				# if the files found in this folder are to be joined into 1 .min file
@@ -486,7 +554,10 @@ class Minimize
 					joining = true
 					
 					# local variable to store the location for the joined file of each file type
-					joined_file_location = joining_hash.clone
+					# only used if the user didn't specify a location
+					if min_path.empty?
+						joined_file_location = joining_hash.clone
+					end
 				else
 					# not joining these files
 					joining = false
@@ -511,26 +582,36 @@ class Minimize
 							next
 						end
 
+						# build the file's complete path
+						file_full_path = "#{dir_path}/#{found_file}"
+
 						# store the full path to the file
 						if joining
 							# check what file type we're dealing with -> find the last "." index
 							found_file_aux = found_file.length - found_file.reverse.index(".")
 							found_file_type = found_file.slice(found_file_aux..-1)
 
+							# if the user didn't specify a location for the .min file
 							# check if this file changes the location the joined.min file should be stored in
-							file_full_path = "#{dir_path}/#{found_file}"
-							if joined_file_location[found_file_type].empty?
-								# 1st file we're checking, so store it's parent folder path
-								joined_file_location[found_file_type] = File.split(file_full_path)[0]
-							elsif !joined_file_location[found_file_type].eql?(File.split(file_full_path)[0])
-								# there is already a temporary location, so check against the current file's location
-								joined_file_location[found_file_type] = common_path(joined_file_location[found_file_type], File.split(file_full_path)[0])
+							if min_path.empty?
+								if joined_file_location[found_file_type].empty?
+									# 1st file we're checking, so store it's parent folder path
+									joined_file_location[found_file_type] = File.split(file_full_path)[0]
+								elsif !joined_file_location[found_file_type].eql?(File.split(file_full_path)[0])
+									# there is already a temporary location, so check against the current file's location
+									joined_file_location[found_file_type] = common_path(joined_file_location[found_file_type], File.split(file_full_path)[0])
+								end
 							end
 
 							# add this file to the respective file type in the temp hash
 							joining_hash[found_file_type].push(file_full_path)
 						else
-							files.push("#{dir_path}/#{found_file}")
+							# add the file's info
+							files.push({
+								# if no destination for the .min file was provided, store it in the same folder as the source file
+								:min_path => (min_path.empty? ? File.split(file_full_path)[0] : min_path),
+								:file_paths => file_full_path
+							})
 						end
 					}
 				end
@@ -543,11 +624,12 @@ class Minimize
 					joining_hash.each { |key,value|
 						# if this file type has at least 1 file found, add it to the result set
 						if !value.empty?
-							# add to 1st position of the array the location for the joined.min file
-							value.unshift(joined_file_location[key])
-
-							# add the array to the result set
-							files.push(value)
+							# add the file's info
+							files.push({
+								# if no destination for the .min file was provided, store it in the last common folder between all source files
+								:min_path => (min_path.empty? ? joined_file_location[key] : min_path),
+								:file_paths => value
+							})
 						end
 					}
 				end
@@ -640,6 +722,21 @@ class Minimize
 				# if the file already exists, remove all contents
 				if File.exist?(min_path)
 					File.truncate(min_path, 0)
+				else
+					aux = File.split(min_path)[0].split("/")
+
+					# if any of the directories in the .min file's location doesn't exist, create it
+					aux_path = ""
+					aux.each { |directory|
+						# build the absolute path so far
+						aux_path += (aux_path.empty? ? "" : "/") + directory
+
+						# check if this dir exists
+						if !Dir.exist?(aux_path)
+							# create the dir
+							Dir.mkdir(aux_path)
+						end
+					}
 				end
 				# open the .min file in append mode (will create the file if it doesn't exist)
 				file = File.new(min_path, "a")

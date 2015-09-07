@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.0.3				 #
+ # Ruby Minimizer for CSS and JS files v1.0.4				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #
@@ -15,7 +15,7 @@ begin
 	# create an object with the Minimize class
 	minimize = Minimize.new()
 
-	puts "watching for changes..."
+	puts "\n\rwatching for changes..."
 	puts "=> CTRL-C to terminate"
 
 	# endless loop
@@ -26,6 +26,8 @@ begin
 		# the default value for the parameter is 5 seconds
 		minimize.watch()
 	end
+rescue Interrupt => e
+	puts "\n\r=> Thank you for using this application!"
 rescue Exception => e
-	puts e
+	puts "\n\r=> ERROR: #{e}"
 end
