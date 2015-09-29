@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.0.4				 #
+ # Ruby Minimizer for CSS and JS files v1.0.5				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #
@@ -70,7 +70,7 @@ class Minimize
 						:file_paths => item[:path]
 					})
 				else
-					puts "\n\r=> WARNING: The path \"#{item[:path].to_s}\" in the watch list doesn't exist!"
+					print_str("WARNING: The path \"#{item[:path].to_s}\" in the watch list doesn't exist!")
 
 					next
 				end
@@ -130,14 +130,14 @@ class Minimize
 							# process this file's minimization
 							if minimize_file(file_min_path)
 								# display message informing the file was created/updated
-								puts "\n\r=> UPDATED: #{file_min_path}"
+								print_str("UPDATED: #{file_min_path}")
 							else
 								# display message informing of an error
-								puts "\n\r=> WARNING: an error occured while minimizing the file #{file_min_path}!"
+								print_str("WARNING: an error occured while minimizing the file #{file_min_path}!")
 							end
 						else
 							# display message informing of an error
-							puts "\n\r=> WARNING: an error occured while joining the specified files into #{file_min_path}!"
+							print_str("WARNING: an error occured while joining the specified files into #{file_min_path}!")
 						end
 					end
 				}
@@ -196,7 +196,7 @@ class Minimize
 
 						# if there is no ], give msg to user and skip this line
 						if pos_opts_e === nil
-							puts "\n\r=> WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the options."
+							print_str("WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the options.")
 
 							next
 						end
@@ -233,7 +233,7 @@ class Minimize
 
 						# if there is no }, give msg to user and skip this line
 						if pos_min_e === nil
-							puts "\n\r=> WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the minimized file's location."
+							print_str("WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the minimized file's location.")
 
 							next
 						end
@@ -278,11 +278,11 @@ class Minimize
 				@lists_mtime[item] = File.stat(path).mtime
 			rescue Exception => e
 				if item === 0
-					puts "\n\r=> WARNING: There was a problem reading the \"#{@ignore_path}\" file. Please make sure such a file exists."
+					print_str("WARNING: There was a problem reading the \"#{@ignore_path}\" file. Please make sure such a file exists.")
 				elsif item === 1
-					puts "\n\r=> WARNING: There was a problem reading the \"#{@watch_path}\" file. Please make sure such a file exists."
+					print_str("WARNING: There was a problem reading the \"#{@watch_path}\" file. Please make sure such a file exists.")
 				else
-					puts "\n\r=> ERROR: invalid parameter in build_list method"
+					print_str("ERROR: invalid parameter in build_list method")
 				end
 				
 				raise e
@@ -1043,5 +1043,10 @@ class Minimize
 				# the last common node is in i-1
 				path1_detail.slice(0...i).join("/")
 			end
+		end
+
+		# receives a string and prints it to console
+		def print_str(string)
+			puts "\n\r=> [" + Time.now.strftime("%H:%M:%S") + "] " + string
 		end
 end
