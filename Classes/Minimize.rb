@@ -797,7 +797,7 @@ class Minimize
 				multiline_comment_start = /\/\*/
 				multiline_comment_end = /\*\//
 				# local variable (array) storing all characters that don't need to have a whitespace before or after
-				specific_chars = [";",":",",","{","}","[","]","(",")","+","-","*","<",">","=","||","&&","!="]
+				specific_chars = [";",":",",","{","}","[","]","(",")","+","-","*","<",">","||","&&","=","!=","==","==="]
 
 				while pos_str_e < file.length - 1
 					# find the end of the next chunk of text
@@ -831,7 +831,7 @@ class Minimize
 								# if there is a start to a multiline comment, find the closest end to a multiline comment
 								aux[1] = aux_str.reverse.index(multiline_comment_start) # using multiline_comment_start because the string is reversed, so */ becomes /*
 
-								if aux[1] === nil or aux[0] > aux[1]
+								if aux[1] === nil or aux[0] < aux[1] # the relation between start and end positions is reversed, because the reverse string was used to find those positions
 									# if there is no end to the comment or the closest end is before the start (then we have an open comment, meaning the quote is inside a comment)
 									# ignore this quote
 									next
@@ -845,7 +845,7 @@ class Minimize
 								# if there is a start to an inline comment, find the closest end to an inline comment
 								aux[1] = aux_str.reverse.index(line_break)
 
-								if aux[1] === nil or aux[0] < aux[1]
+								if aux[1] === nil or aux[0] < aux[1] # the relation between start and end positions is reversed, because the reverse string was used to find those positions
 									# if there is no end to the comment or the closest end is before the start (then we have an open comment, meaning the quote is inside a comment)
 									# ignore this quote
 									next
