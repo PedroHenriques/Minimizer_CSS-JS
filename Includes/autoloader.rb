@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.0.5				 #
+ # Ruby Minimizer for CSS and JS files v1.0.6				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #

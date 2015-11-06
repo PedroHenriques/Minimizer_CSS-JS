@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.0.5				 #
+ # Ruby Minimizer for CSS and JS files v1.0.6				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #
@@ -826,10 +826,10 @@ class Minimize
 
 							# multiline comment
 							# find the start of the multiline comment closest to the quote
-							aux[0] = aux_str.reverse.index(multiline_comment_start)
+							aux[0] = aux_str.reverse.index(multiline_comment_end) # using multiline_comment_end because the string is reversed, so /* becomes */
 							if aux[0] != nil
 								# if there is a start to a multiline comment, find the closest end to a multiline comment
-								aux[1] = aux_str.reverse.index(multiline_comment_end)
+								aux[1] = aux_str.reverse.index(multiline_comment_start) # using multiline_comment_start because the string is reversed, so */ becomes /*
 
 								if aux[1] === nil or aux[0] > aux[1]
 									# if there is no end to the comment or the closest end is before the start (then we have an open comment, meaning the quote is inside a comment)
