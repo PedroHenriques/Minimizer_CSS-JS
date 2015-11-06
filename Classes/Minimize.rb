@@ -797,7 +797,7 @@ class Minimize
 				multiline_comment_start = /\/\*/
 				multiline_comment_end = /\*\//
 				# local variable (array) storing all characters that don't need to have a whitespace before or after
-				specific_chars = [";",":",",","{","}","[","]","(",")","+","-","*","<",">","||","&&","=","!=","==","==="]
+				specific_chars = [";",":",",","{","}","[","]","(",")","+","-","*","<",">","||","&&","=","!="]
 
 				while pos_str_e < file.length - 1
 					# find the end of the next chunk of text
