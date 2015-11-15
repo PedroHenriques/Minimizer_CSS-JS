@@ -14,16 +14,22 @@ This application also allows you to minimize several CSS and javascript files in
 Place all the files (unzip if necessary) in a place on your computer that is central to the files you'll be minimizing.
 This application can receive absolute or relative paths to the files/folders to be minimized, so you can have the application in a central place or have a copy in each project.
 
-By default the application will cycle through the specified folders and files (see below for more information) every 5 seconds. This value can be adjusted by inserting the desired number of seconds of wait inside the parenthesis of `minimize.watch()` in "app.rb".
-EX: `minimize.watch(10)` will prompt the application to wait 10 seconds between cycles of the folders and files.
-
 To start the application simply double click the file "app.rb".
 Alternatively you may also run "app.rb" via the command line or console.
 
 ## Use Instructions
-Once the application is running it will continuously keep watch over the folders and files you specified (see below for more information) and update the minimized files whenever the source files are changed.
+Once the application starts, you will be prompted for a command.
+The valid commands are:
+- **help:** displays all the valid commands and useful information
+- **close:** terminates the application
+- **exit:** same as the close command
+- **run:** starts the scan and minimization of the specified folders and files
 
-Once the application is running it will keep running and watching for changes to the folders and files specified until you terminate the application. This can be done by closing the window the application is running or by pressing `CTRL`-`c` with the window selected.
+Once the application is running it will continuously keep watch over the folders and files you specified (see below for more information) and update the minimized files whenever the source files are changed. You can stop it by pressing `CTRL`-`c` with the window selected.
+
+By default the application will cycle through the specified folders and files (see below for more information) every 5 seconds.  
+This value can be adjusted by inserting the desired number of seconds to wait when calling the RUN command.  
+EX: `run` will start the scan and minimization process waiting 5 seconds (default value) between cycles, while `run 10` will wait 10 seconds between cycles.
 
 ## Supported File Types
 Currently this application supports the following file types:
