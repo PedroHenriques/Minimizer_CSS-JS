@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.0.6				 #
+ # Ruby Minimizer for CSS and JS files v1.1.0				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #
@@ -33,17 +33,7 @@ class Minimize
 	end
 
 	# main method of this class that will actively watch for the relevant files and deal with them
-	# receives an integer representing the numer of seconds to wait between loops
-	def watch(sleep_time=5)
-		sleep_time = sleep_time.to_i
-
-		# sanitize sleep_time
-		# sleep_time has to be at least 1 second
-		if sleep_time < 1
-			# use the default value
-			sleep_time = 5
-		end
-		
+	def watch()
 		begin
 			# check if the watch and ignore lists are up-to-date
 			if File.stat(File.absolute_path(@ignore_path)).mtime > @lists_mtime[0]
@@ -145,8 +135,6 @@ class Minimize
 		rescue Exception => e
 			raise e
 		end
-
-		sleep sleep_time
 	end
 
 	private
