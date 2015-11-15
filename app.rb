@@ -3,6 +3,8 @@
  # Ruby Minimizer for CSS and JS files v1.1.0				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
+ # https://github.com/PedroHenriques 						 #
+ # 															 #
  # Copyright 2015, PedroHenriques 							 #
  # Free to use under the MIT license.			 			 #
  # http://www.opensource.org/licenses/mit-license.php 		 #
@@ -16,7 +18,7 @@ begin
 	minimize = Minimize.new()
 
 	# store the outro message
-	outro_msg = "\n\r=> Thank you for using this application!"
+	outro_msg = "\n\r=> Thank you for using this application!\n\rFollow this application at https://github.com/PedroHenriques/Minimizer_CSS-JS"
 	# set the default command
 	command = :none
 
@@ -71,7 +73,16 @@ begin
 			case command
 			when :help
 				# print HELP information
-
+				puts "\n\r---------------------------------\n\r"
+				puts "You can use the following commands:\n\r"
+				puts "	help => Help information"
+				puts "	close OR exit => Exit application"
+				puts "	run => Start the scan of files and minimizing them\n\r"
+				puts "By default the application will wait " + default_sleep_time.to_s + " seconds between scanning the selected files for changes and, if needed, minimize them"
+				puts "If, however, you want the application to use a different wait time, you can specify the desired wait time when calling the RUN command"
+				puts "EX: The command \"run 10\" will start the file scan with a 10 second wait time between scan cycles\n\r"
+				puts "NOTE: The wait time has to be positive and can be a decimal number"
+				puts "\n\r---------------------------------\n\r"
 
 				# reset command to none, for next loop iteration to ask for a command
 				command = :none

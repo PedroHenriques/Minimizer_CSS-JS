@@ -3,6 +3,8 @@
  # Ruby Minimizer for CSS and JS files v1.1.0				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
+ # https://github.com/PedroHenriques 						 #
+ # 															 #
  # Copyright 2015, PedroHenriques 							 #
  # Free to use under the MIT license.			 			 #
  # http://www.opensource.org/licenses/mit-license.php 		 #
