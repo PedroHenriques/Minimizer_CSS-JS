@@ -3,6 +3,8 @@
 
 Light weight and self contained (no extra packages/dependencies required)
 
+This application is built in Ruby, as such your computer needs to have Ruby installed. You can find the Ruby install for your system at ([www.ruby-lang.org](https://www.ruby-lang.org/en/)).
+
 ## What this application will do for you
 This application will condense CSS and JavaScript code down to 1 line by removing comments, line breaks and other pieces of text unecessary for the browser to interpret your CSS or Javascript code.
 
