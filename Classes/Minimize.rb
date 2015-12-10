@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.1.0				 #
+ # Ruby Minimizer for CSS and JS files v1.2.0				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # https://github.com/PedroHenriques 						 #
@@ -119,13 +119,19 @@ class Minimize
 					if !min_up_to_date(file_min_path, file[:file_paths].clone) # pass a clone of file to avoid loosing information in the variable file
 						# create the raw version of the minimized file
 						if create_min_file(file_min_path, file[:file_paths].clone) # pass a clone of file to avoid loosing information in the variable file
+							# check the size of the raw version of the .min
+							# if the size is zero, then all of it's source files are empty
+							raw_min_size = File.new(file_min_path).size
+
 							# process this file's minimization
-							if minimize_file(file_min_path)
-								# display message informing the file was created/updated
-								print_str("UPDATED: #{file_min_path}")
-							else
+							if !minimize_file(file_min_path) and raw_min_size != 0
+								# the minimization method didn't minimize anything and the source files aren't empty
 								# display message informing of an error
 								print_str("WARNING: an error occured while minimizing the file #{file_min_path}!")
+							else
+								# the minimization method minimized something or the source files are empty
+								# display message informing the file was created/updated
+								print_str("UPDATED: #{file_min_path}")
 							end
 						else
 							# display message informing of an error
@@ -459,7 +465,7 @@ class Minimize
 						# depending on the joining status, process this path
 						if joining
 							# check if the file exists and is a supported file type and isn't empty
-							if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last) and File.new(path_current).size != 0
+							if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last)
 								# all OK, add the path to the result set
 								files.last[:file_paths].push(path_current)
 							end
@@ -475,7 +481,7 @@ class Minimize
 							end
 						else
 							# check if the file exists and is a supported file type and isn't empty
-							if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last) and File.new(path_current).size != 0
+							if File.exist?(path_current) and @valid_file_types.include?(file_detail[1].split(".").last)
 								# all OK, add the path to the result set
 								files.push({
 									:min_path => path[:min_path],
