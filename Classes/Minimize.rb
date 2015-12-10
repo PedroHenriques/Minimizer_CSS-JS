@@ -1,6 +1,6 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
- # Ruby Minimizer for CSS and JS files v1.2.0				 #
+ # Ruby Minimizer for CSS and JS files v1.2.1				 #
  # http://www.pedrojhenriques.com 							 #
  # 															 #
  # https://github.com/PedroHenriques 						 #
@@ -124,14 +124,14 @@ class Minimize
 							raw_min_size = File.new(file_min_path).size
 
 							# process this file's minimization
-							if !minimize_file(file_min_path) and raw_min_size != 0
-								# the minimization method didn't minimize anything and the source files aren't empty
-								# display message informing of an error
-								print_str("WARNING: an error occured while minimizing the file #{file_min_path}!")
-							else
+							if raw_min_size == 0 or minimize_file(file_min_path)
 								# the minimization method minimized something or the source files are empty
 								# display message informing the file was created/updated
 								print_str("UPDATED: #{file_min_path}")
+							else
+								# the minimization method didn't minimize anything and the source files aren't empty
+								# display message informing of an error
+								print_str("WARNING: an error occured while minimizing the file #{file_min_path}!")
 							end
 						else
 							# display message informing of an error
