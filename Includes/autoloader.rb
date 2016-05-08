@@ -1,15 +1,15 @@
- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
- # 															 #
- # Ruby Minimizer for CSS and JS files v1.2.1				 #
- # http://www.pedrojhenriques.com 							 #
- # 															 #
- # https://github.com/PedroHenriques 						 #
- # 															 #
- # Copyright 2015, PedroHenriques 							 #
- # Free to use under the MIT license.			 			 #
- # http://www.opensource.org/licenses/mit-license.php 		 #
- # 															 #
- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# 															 #
+# Ruby Minimizer for CSS and JS files v1.2.1				 #
+# 															 #
+# Copyright 2015, PedroHenriques 							 #
+# http://www.pedrojhenriques.com 							 #
+# https://github.com/PedroHenriques 						 #
+# 															 #
+# Free to use under the MIT license.			 			 #
+# http://www.opensource.org/licenses/mit-license.php 		 #
+# 															 #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # load classes
 dir = Dir.new("#{File.dirname(File.dirname(__FILE__))}/Classes")

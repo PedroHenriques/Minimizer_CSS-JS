@@ -1,15 +1,15 @@
- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
- # 															 #
- # Ruby Minimizer for CSS and JS files v1.2.1				 #
- # http://www.pedrojhenriques.com 							 #
- # 															 #
- # https://github.com/PedroHenriques 						 #
- # 															 #
- # Copyright 2015, PedroHenriques 							 #
- # Free to use under the MIT license.			 			 #
- # http://www.opensource.org/licenses/mit-license.php 		 #
- # 															 #
- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# 															 #
+# Ruby Minimizer for CSS and JS files v1.2.1				 #
+# 															 #
+# Copyright 2015, PedroHenriques 							 #
+# http://www.pedrojhenriques.com 							 #
+# https://github.com/PedroHenriques 						 #
+# 															 #
+# Free to use under the MIT license.			 			 #
+# http://www.opensource.org/licenses/mit-license.php 		 #
+# 															 #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 require "#{File.dirname(__FILE__)}/Includes/autoloader.rb"
 
@@ -50,7 +50,7 @@ begin
 
 					# grab the inserted sleep time
 					cg1 = aux_regex.captures
-					
+
 					# validate the captured value
 					aux_sleep = cg1[0].to_f
 					if cg1[0].length == 0 or aux_sleep < 0

@@ -1,11 +1,11 @@
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
  # 															 #
  # Ruby Minimizer for CSS and JS files v1.2.1				 #
- # http://www.pedrojhenriques.com 							 #
- # 															 #
- # https://github.com/PedroHenriques 						 #
  # 															 #
  # Copyright 2015, PedroHenriques 							 #
+ # http://www.pedrojhenriques.com 							 #
+ # https://github.com/PedroHenriques 						 #
+ # 															 #
  # Free to use under the MIT license.			 			 #
  # http://www.opensource.org/licenses/mit-license.php 		 #
  # 															 #
@@ -96,7 +96,7 @@ class Minimize
 
 						file_current = file[:file_paths]
 					end
-					
+
 					# split the file's directory path from file name
 					file_detail = File.split(file_current)
 
@@ -280,7 +280,7 @@ class Minimize
 				else
 					print_str("ERROR: invalid parameter in build_list method")
 				end
-				
+
 				raise e
 			end
 		end
@@ -404,7 +404,7 @@ class Minimize
 								end
 							end
 						end
-						
+
 						# if this wl_item item isn't empty (only when we're joining multiple files)
 						if joining
 							if !wl_item[:file_paths].empty?
@@ -548,7 +548,7 @@ class Minimize
 				# if the files found in this folder are to be joined into 1 .min file
 				if opts.include?("join")
 					joining = true
-					
+
 					# local variable to store the location for the joined file of each file type
 					# only used if the user didn't specify a location
 					if min_path.empty?
@@ -968,7 +968,7 @@ class Minimize
 				if !file_detail[i].eql?(folder_detail[i])
 					# the nodes aren't the same, so the file and the folder are either
 					# inside the same directory (are siblings)
-					# or are in unrelated directory trees 
+					# or are in unrelated directory trees
 					break
 				end
 
