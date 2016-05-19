@@ -1,15 +1,15 @@
- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
- # 															 #
- # Ruby Minimizer for CSS and JS files v1.2.1				 #
- # 															 #
- # Copyright 2015, PedroHenriques 							 #
- # http://www.pedrojhenriques.com 							 #
- # https://github.com/PedroHenriques 						 #
- # 															 #
- # Free to use under the MIT license.			 			 #
- # http://www.opensource.org/licenses/mit-license.php 		 #
- # 															 #
- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# 															 #
+# Ruby Minimizer for CSS and JS files v1.2.2				 #
+# 															 #
+# Copyright 2015, PedroHenriques 							 #
+# http://www.pedrojhenriques.com 							 #
+# https://github.com/PedroHenriques 						 #
+# 															 #
+# Free to use under the MIT license.			 			 #
+# http://www.opensource.org/licenses/mit-license.php 		 #
+# 															 #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 class Minimize
 	attr_reader :ignore_list, :watch_list

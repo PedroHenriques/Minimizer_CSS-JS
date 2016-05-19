@@ -1,6 +1,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # 															 #
-# Ruby Minimizer for CSS and JS files v1.2.1				 #
+# Ruby Minimizer for CSS and JS files v1.2.2				 #
 # 															 #
 # Copyright 2015, PedroHenriques 							 #
 # http://www.pedrojhenriques.com 							 #
@@ -23,7 +23,7 @@ begin
 	command = :none
 
 	# print welcome message
-	puts "\n\rWelcome to the CSS and JS Minimizer appication!"
+	puts "\n\rWelcome to the CSS and JS Minimizer application!"
 	puts "Type HELP for a list of commands.\n\r"
 
 	# application loop
