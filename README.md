@@ -90,6 +90,56 @@ If no destination is provided the following default behaviours will be used:
 - Files being minimized together into 1 ".min" file will be placed in the last folder common to all the relevant source files  
 Example: if the source files are `C:/xampp/htdocs/project/css/main.css` and `C:/xampp/htdocs/project/css/helpers/tables.css` then the minimized file will be placed in `C:/xampp/htdocs/project/css`
 
+## Multi-line Comments
+
+The application, by default, will remove all in-line and multi-line comments.  
+There is, however, a way to signal the application that specific multi-line comments are to be kept.  
+
+There are 2 ways a multi-line comment can be kept in the minimized version:
+
+- **Intact:**  
+	This will retain a multi-line comment exactly as it is, with all line breaks, tabs and white spaces intact.  
+	This format is identified by placing `!!` immediately after the multi-line comment start syntax.
+
+- **Collapsed:**  
+	This will collapse a multi-line comment into 1 line, i.e., all line breaks, tabs and multiple consecutive white spaces will be removed.  
+	This format is identified by placing `!` immediately after the multi-line comment start syntax.
+
+**EX:**  
+
+### 1)
+
+```
+/*!!****
+	This is a multi-line comment
+	With line breaks
+*****/
+```
+
+Is minimized into  
+
+```
+/*****
+	This is a multi-line comment
+	With line breaks
+*****/
+```
+
+### 2)
+
+```
+/*!****
+	This is a multi-line comment
+	With line breaks
+*****/
+```
+
+Is minimized into  
+
+```
+/*****This is a multi-line commentWith line breaks*****/
+```
+
 ## Examples
 
 ### 1)
@@ -112,8 +162,8 @@ Both of the resulting minimized files will be placed in the last folder common t
 watch_list.txt | ignore_list.txt
 :--- | :---
 C:/xampp/htdocs/website [js&#124;join] | C:/xampp/htdocs/website/slider.js [nojoin]
-C:/xampp/htdocs/website/slider.js {C:/xampp/htdocs/website/assets} | 
-C:/xampp/htdocs/website/css/buttons.css | 
+C:/xampp/htdocs/website/slider.js {C:/xampp/htdocs/website/assets} |
+C:/xampp/htdocs/website/css/buttons.css |
 
 All .js files inside the website folder and its subfolders, with the exception of slider.js, will be minimized into 1 single ".min" file named "joined.min.js" and placed in the last folder common to all the relevant source files.  
 The file slider.js will be minimized individualy in "slider.min.js", placed in C:/xampp/htdocs/website/assets.  

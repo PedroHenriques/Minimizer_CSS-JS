@@ -1,6 +1,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # 															 #
-# Ruby Minimizer for CSS and JS files v1.2.2				 #
+# Ruby Minimizer for CSS and JS files v1.3.0				 #
 # 															 #
 # Copyright 2015, PedroHenriques 							 #
 # http://www.pedrojhenriques.com 							 #
@@ -25,13 +25,13 @@ class Minimize
 		# default options, to be used when no options are passed for a path
 		@default_opts = @valid_file_types.join("|")
 
-		# class variable to store the modified time of the watch and ignore lists last used
+		# instance variable to store the modified time of the watch and ignore lists last used
 		# this allows for the watch and ignore list files to be changed without requiring an application restart
 		@lists_mtime = Array.new
 
 		# build the arrays with paths to watch and ignore
-		build_list(0)
-		build_list(1)
+		buildList(0)
+		buildList(1)
 	end
 
 	# main method of this class that will actively watch for the relevant files and deal with them
@@ -40,11 +40,11 @@ class Minimize
 			# check if the watch and ignore lists are up-to-date
 			if File.stat(File.absolute_path(@ignore_path)).mtime > @lists_mtime[0]
 				# the ignore list file is newer than the one used to build the current @ignore_list
-				build_list(0)
+				buildList(0)
 			end
 			if File.stat(File.absolute_path(@watch_path)).mtime > @lists_mtime[1]
 				# the watch list file is newer than the one used to build the current @watch_list
-				build_list(1)
+				buildList(1)
 			end
 
 			# loop each of the watch paths
@@ -53,7 +53,7 @@ class Minimize
 				files = Array.new
 				if File.directory?(item[:path])
 					# navigate this folder and search all the files that match the criteria
-					files = search_files(item[:path], item[:opts], item[:min_path])
+					files = searchFiles(item[:path], item[:opts], item[:min_path])
 				elsif File.exist?(item[:path])
 					# store the file
 					files.push({
@@ -62,7 +62,7 @@ class Minimize
 						:file_paths => item[:path]
 					})
 				else
-					print_str("WARNING: The path \"#{item[:path].to_s}\" in the watch list doesn't exist!")
+					printStr("WARNING: The path \"#{item[:path].to_s}\" in the watch list doesn't exist!")
 
 					next
 				end
@@ -73,10 +73,10 @@ class Minimize
 				end
 
 				# validate the files
-				files = validate_files(files)
+				files = validateFiles(files)
 
 				# run the files against the ignore list
-				files = check_against_ignore(files)
+				files = checkAgainstIgnore(files)
 
 				# loop through each validated file
 				files.each { |file|
@@ -116,26 +116,26 @@ class Minimize
 					end
 
 					# if the minimized file isn't up-to-date
-					if !min_up_to_date(file_min_path, file[:file_paths].clone) # pass a clone of file to avoid loosing information in the variable file
+					if !minUpToDate(file_min_path, file[:file_paths].clone) # pass a clone of file to avoid loosing information in the variable file
 						# create the raw version of the minimized file
-						if create_min_file(file_min_path, file[:file_paths].clone) # pass a clone of file to avoid loosing information in the variable file
+						if createMinFile(file_min_path, file[:file_paths].clone) # pass a clone of file to avoid loosing information in the variable file
 							# check the size of the raw version of the .min
 							# if the size is zero, then all of it's source files are empty
 							raw_min_size = File.new(file_min_path).size
 
 							# process this file's minimization
-							if raw_min_size == 0 or minimize_file(file_min_path)
+							if raw_min_size == 0 or minimizeFile(file_min_path)
 								# the minimization method minimized something or the source files are empty
 								# display message informing the file was created/updated
-								print_str("UPDATED: #{file_min_path}")
+								printStr("UPDATED: #{file_min_path}")
 							else
 								# the minimization method didn't minimize anything and the source files aren't empty
 								# display message informing of an error
-								print_str("WARNING: an error occured while minimizing the file #{file_min_path}!")
+								printStr("WARNING: an error occured while minimizing the file #{file_min_path}!")
 							end
 						else
 							# display message informing of an error
-							print_str("WARNING: an error occured while joining the specified files into #{file_min_path}!")
+							printStr("WARNING: an error occured while joining the specified files into #{file_min_path}!")
 						end
 					end
 				}
@@ -148,7 +148,7 @@ class Minimize
 	private
 
 		# this method builds the watch and ignore lists, based on the respective files in Data/
-		def build_list(item)
+		def buildList(item)
 			# item === 0	=> ignore list
 			# item === 1	=> watch list
 
@@ -192,7 +192,7 @@ class Minimize
 
 						# if there is no ], give msg to user and skip this line
 						if pos_opts_e === nil
-							print_str("WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the options.")
+							printStr("WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the options.")
 
 							next
 						end
@@ -229,7 +229,7 @@ class Minimize
 
 						# if there is no }, give msg to user and skip this line
 						if pos_min_e === nil
-							print_str("WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the minimized file's location.")
+							printStr("WARNING: There is a syntax error in #{(item===0 ? @ignore_path : @watch_path)} on line #{line_count} with the minimized file's location.")
 
 							next
 						end
@@ -274,11 +274,11 @@ class Minimize
 				@lists_mtime[item] = File.stat(path).mtime
 			rescue Exception => e
 				if item === 0
-					print_str("WARNING: There was a problem reading the \"#{@ignore_path}\" file. Please make sure such a file exists.")
+					printStr("WARNING: There was a problem reading the \"#{@ignore_path}\" file. Please make sure such a file exists.")
 				elsif item === 1
-					print_str("WARNING: There was a problem reading the \"#{@watch_path}\" file. Please make sure such a file exists.")
+					printStr("WARNING: There was a problem reading the \"#{@watch_path}\" file. Please make sure such a file exists.")
 				else
-					print_str("ERROR: invalid parameter in build_list method")
+					printStr("ERROR: invalid parameter in build_list method")
 				end
 
 				raise e
@@ -287,7 +287,7 @@ class Minimize
 
 		# checks an array of file hashes agaist the ignore list
 		# only deals with paths leading to files. will skip paths pointing to directories
-		def check_against_ignore(list)
+		def checkAgainstIgnore(list)
 			begin
 				# if there is no ignore list, return
 				if @ignore_list.empty?
@@ -340,7 +340,7 @@ class Minimize
 									file_detail = File.split(wl_item_current)
 
 									# determine the ignore list's folder degree of parenthood to the watch list file
-									folder_comparison = file_folder_rel(wl_item_current.to_s.downcase, ig_item[:path].to_s.downcase)
+									folder_comparison = fileFolderRel(wl_item_current.to_s.downcase, ig_item[:path].to_s.downcase)
 									if folder_comparison === 1
 										# the ignore list folder is the 1st degree parent of the watch list file
 										# i.e., it's the folder the file is in
@@ -431,7 +431,7 @@ class Minimize
 
 		# receives an array of hashes with file paths and validates them
 		# checks if they exist and if they are of a supported type
-		def validate_files(path_list)
+		def validateFiles(path_list)
 			begin
 				files = Array.new
 
@@ -505,7 +505,7 @@ class Minimize
 		# will ignore all files that have as name: *.min.[one of the valid file types]
 		# if joining on the received path, the first entry on each returned array is the
 		# path to store that joined.min file
-		def search_files(dir_path, dir_opts, min_path)
+		def searchFiles(dir_path, dir_opts, min_path)
 			begin
 				dir_path = dir_path.to_s.strip
 				dir_opts = dir_opts.to_s.strip
@@ -595,7 +595,7 @@ class Minimize
 									joined_file_location[found_file_type] = File.split(file_full_path)[0]
 								elsif !joined_file_location[found_file_type].eql?(File.split(file_full_path)[0])
 									# there is already a temporary location, so check against the current file's location
-									joined_file_location[found_file_type] = common_path(joined_file_location[found_file_type], File.split(file_full_path)[0])
+									joined_file_location[found_file_type] = commonPath(joined_file_location[found_file_type], File.split(file_full_path)[0])
 								end
 							end
 
@@ -638,7 +638,7 @@ class Minimize
 
 		# receives the path to the minimized file and the source file(s)
 		# return TRUE if the .min file is up-to-date or FALSE if it's needed to run the minimize_file method
-		def min_up_to_date(min_path, sources)
+		def minUpToDate(min_path, sources)
 			begin
 				min_path = min_path.to_s.strip
 
@@ -695,7 +695,7 @@ class Minimize
 
 		# receives the path to the minimized file and the source file(s)
 		# return TRUE if the .min file was created or FALSE otherwise
-		def create_min_file(min_path, sources)
+		def createMinFile(min_path, sources)
 			begin
 				min_path = min_path.to_s.strip
 
@@ -772,7 +772,7 @@ class Minimize
 
 		# receives a path to a file and will edit it to minimize it
 		# return TRUE if successful or FALSE if an error occured
-		def minimize_file(file_path)
+		def minimizeFile(file_path)
 			begin
 				file_path = file_path.to_s.strip
 
@@ -788,10 +788,12 @@ class Minimize
 				pos_str_e = 0 # is always at the position after the end of the chunk of text to be changed
 				inside_str = false
 				# local variables to help with regex
-				line_break = /(\r|\n)/
-				inline_comment = /\/\//
-				multiline_comment_start = /\/\*/
-				multiline_comment_end = /\*\//
+				re_line_break = /(\r|\n)/
+				re_inline_comment = /\/\//
+				re_multiline_comment_start = /\/\*/
+				re_multiline_comment_end = /\*\//
+				multiline_comment_keep_1line = "!"
+				multiline_comment_keep_intact = "!!"
 				# local variable (array) storing all characters that don't need to have a whitespace before or after
 				specific_chars = [";",":",",","{","}","[","]","(",")","+","-","*","<",">","||","&&","=","!="]
 
@@ -822,10 +824,10 @@ class Minimize
 
 							# multiline comment
 							# find the start of the multiline comment closest to the quote
-							aux[0] = aux_str.reverse.index(multiline_comment_end) # using multiline_comment_end because the string is reversed, so /* becomes */
+							aux[0] = aux_str.reverse.index(re_multiline_comment_end) # using re_multiline_comment_end because the string is reversed, so /* becomes */
 							if aux[0] != nil
 								# if there is a start to a multiline comment, find the closest end to a multiline comment
-								aux[1] = aux_str.reverse.index(multiline_comment_start) # using multiline_comment_start because the string is reversed, so */ becomes /*
+								aux[1] = aux_str.reverse.index(re_multiline_comment_start) # using re_multiline_comment_start because the string is reversed, so */ becomes /*
 
 								if aux[1] === nil or aux[0] < aux[1] # the relation between start and end positions is reversed, because the reverse string was used to find those positions
 									# if there is no end to the comment or the closest end is before the start (then we have an open comment, meaning the quote is inside a comment)
@@ -836,10 +838,10 @@ class Minimize
 
 							# inline comment
 							# find the start of the inline comment closest to the quote
-							aux[0] = aux_str.reverse.index(inline_comment)
+							aux[0] = aux_str.reverse.index(re_inline_comment)
 							if aux[0] != nil and aux_str.slice(aux[0]-5...aux[0]).match(/http:/) === nil and aux_str.slice(aux[0]-6...aux[0]).match(/https:/) === nil
 								# if there is a start to an inline comment, find the closest end to an inline comment
-								aux[1] = aux_str.reverse.index(line_break)
+								aux[1] = aux_str.reverse.index(re_line_break)
 
 								if aux[1] === nil or aux[0] < aux[1] # the relation between start and end positions is reversed, because the reverse string was used to find those positions
 									# if there is no end to the comment or the closest end is before the start (then we have an open comment, meaning the quote is inside a comment)
@@ -864,58 +866,116 @@ class Minimize
 
 						# find any inline comments // and remove them
 						regex_start = 0
-						while aux_str.match(inline_comment, regex_start) != nil
+						while aux_str.match(re_inline_comment, regex_start) != nil
 							aux = Array.new
 
 							# find the start of the next inline comment
-							aux[0] = aux_str.index(inline_comment, regex_start)
+							aux[0] = aux_str.index(re_inline_comment, regex_start)
 							if aux_str.slice(aux[0]-5...aux[0]).match(/http:/) != nil or aux_str.slice(aux[0]-6...aux[0]).match(/https:/) != nil
 								# if the match has http: or https: before, ignore
 								regex_start = aux[0] + 1
 								next
 							end
 							# find the end of the next inline comment -> either the 1st line break or the end of this chunk of text
-							if aux_str.match(line_break, aux[0]) === nil
+							if aux_str.match(re_line_break, aux[0]) === nil
 								# no line breaks, so the inline comment ends at this chunk of text's end
 								aux[1] = aux_str.length - 1
 							else
 								# found a line break
-								aux[1] = aux_str.index(line_break, aux[0])
+								aux[1] = aux_str.index(re_line_break, aux[0])
 							end
 
 							# adjust the current chunk of text
 							aux_str = aux_str.slice(0...aux[0]) + aux_str.slice(aux[1]..-1)
 						end
 
-						# replce all tabs with nothing
-						aux_str.gsub!(/\t/, "")
+						# split this chunk of text by multiline comments
+						# this allows for different processing to be done to the comments
+						# and to the non-comment text
+						aux_array = Array.new
 
-						# find any multiline comments and remove them
-						while aux_str.match(multiline_comment_start) != nil
+						# find all the multiline comments and split the chunk of text by them
+						while aux_str.match(re_multiline_comment_start) != nil
 							aux = Array.new
 
 							# find the start of the next comment
-							aux[0] = aux_str.index(multiline_comment_start)
+							aux[0] = aux_str.index(re_multiline_comment_start)
 							# find the end of the next comment
-							aux[1] = aux_str.index(multiline_comment_end) + 1
+							aux[1] = aux_str.index(re_multiline_comment_end) + 1
+
+							# store the non-comment text
+							aux_array.push({
+								:value => aux_str.slice(0...aux[0]),
+								:type => :normal
+							})
+
+							# determine if this comment is to be kept
+							# keep the comment if characters after the comment's syntax are multiline_comment_keep_1line
+							# or multiline_comment_keep_intact
+							comment_substr = aux_str.slice(aux[0]+2, 2)
+							if comment_substr.match(/^#{multiline_comment_keep_intact}$/i) != nil
+								# remove the characters used to indicate the comment is to be kept
+								comment_value = aux_str.slice(aux[0], 2) + aux_str.slice(aux[0]+4..aux[1])
+								comment_type = :comment_intact
+							elsif comment_substr.match(/^#{multiline_comment_keep_1line}/i) != nil
+								# remove the characters used to indicate the comment is to be kept
+								comment_value = aux_str.slice(aux[0], 2) + aux_str.slice(aux[0]+3..aux[1])
+								comment_type = :comment_collapse
+							else
+								comment_value = nil
+								comment_type = nil
+
+							end
+
+							# if this comment is to be kept, store it
+							if comment_type != nil
+								aux_array.push({
+									:value => comment_value,
+									:type => comment_type
+								})
+							end
 
 							# adjust the current chunk of text
-							aux_str = aux_str.slice(0...aux[0]) + aux_str.slice(aux[1]+1..-1)
+							aux_str = aux_str.slice(aux[1]+1..-1)
 						end
 
-						# remove any line breaks
-						aux_str.gsub!(line_break, "")
+						# there are no multiline comments, so add the entire chunk of text
+						# or we've looped through all the multiline comments, so store the last non-comment text
+						aux_array.push({
+							:value => aux_str,
+							:type => :normal
+						})
 
-						# replace all multiple whitespaces (2+ whitespaces) with a single whitespace
-						aux_str.gsub!(/[[:space:]]{2,}/, " ")
-
-						# remove selected single whitespaces
+						# in preparation for removing selected single whitespaces
 						# convert the specific characters into a string ready for regex
 						specific_chars_str = Regexp.escape(specific_chars.join("Q")).gsub(/Q/, "|")
-						# remove whitespaces before specific characters
-						aux_str.gsub!(Regexp.new("[[:space:]](#{specific_chars_str})"), "\\1")
-						# remove whitespaces after specific characters
-						aux_str.gsub!(Regexp.new("(#{specific_chars_str})[[:space:]]"), "\\1")
+
+						# reset this variable to store the rebuild string
+						aux_str = ""
+
+						# loop through each part of the chunk of text and reconstruct it
+						# for each part do the necessary treatment, depending if it's a comment or not
+						aux_array.each { |item|
+							# if it's not a comment or is a comment to be collapsed
+							if item[:type] != :comment_intact
+								# replce all tabs with nothing
+								item[:value].gsub!(/\t/, "")
+
+								# remove any line breaks
+								item[:value].gsub!(re_line_break, "")
+
+								# replace all multiple whitespaces (2+ whitespaces) with a single whitespace
+								item[:value].gsub!(/[[:space:]]{2,}/, " ")
+
+								# remove whitespaces before specific characters
+								item[:value].gsub!(/[[:space:]](#{specific_chars_str})/, "\\1")
+								# remove whitespaces after specific characters
+								item[:value].gsub!(/(#{specific_chars_str})[[:space:]]/, "\\1")
+							end
+
+							# add this part to the rebuilt string
+							aux_str += item[:value]
+						}
 
 						# adjust control variables for next chunk of text from the source file
 						pos_str_i = pos_str_e
@@ -943,7 +1003,7 @@ class Minimize
 		# return a positive integer if the file is a child of the folder -> the value of the integer is the degree of relationship
 		# EX: 1 = the file is inside the folder; 2 = the file is inside a subfolder directly under the folder
 		# return nil if the file and the folder have the same path
-		def file_folder_rel(file, folder)
+		def fileFolderRel(file, folder)
 			file = File.absolute_path(file.to_s.strip)
 			folder = File.absolute_path(folder.to_s.strip)
 
@@ -1002,7 +1062,7 @@ class Minimize
 
 		# receives 2 absolute paths
 		# returns the common part of the 2 paths OR empty if there is no common part
-		def common_path(path1, path2)
+		def commonPath(path1, path2)
 			path1 = File.absolute_path(path1.to_s.strip)
 			path2 = File.absolute_path(path2.to_s.strip)
 
@@ -1042,7 +1102,7 @@ class Minimize
 		end
 
 		# receives a string and prints it to console
-		def print_str(string)
+		def printStr(string)
 			puts "\n\r=> [" + Time.now.strftime("%H:%M:%S") + "] " + string
 		end
 end
