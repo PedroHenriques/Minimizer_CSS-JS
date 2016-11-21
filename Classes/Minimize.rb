@@ -1,6 +1,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # 															 #
-# Ruby Minimizer for CSS and JS files v1.3.0				 #
+# Ruby Minimizer for CSS and JS files v1.3.1				 #
 # 															 #
 # Copyright 2015, PedroHenriques 							 #
 # http://www.pedrojhenriques.com 							 #
@@ -16,8 +16,8 @@ class Minimize
 
 	def initialize()
 		# these paths point to the watch and ignore files
-		@ignore_path = "Data/ignore_list.txt"
-		@watch_path = "Data/watch_list.txt"
+		@ignore_path = "#{File.dirname(File.dirname(__FILE__))}/Data/ignore_list.txt"
+		@watch_path = "#{File.dirname(File.dirname(__FILE__))}/Data/watch_list.txt"
 
 		# supported file types
 		@valid_file_types = ["css", "js"]
