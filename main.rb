@@ -11,13 +11,18 @@
 # 															 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# load classes
-dir = Dir.new("#{File.dirname(File.dirname(__FILE__))}/Classes")
-dir.each do |file|
-	if file.match(/^(.|..)$/)
-		next
-	end
+require "#{File.dirname(__FILE__)}/Includes/autoloader.rb"
 
-	require "#{File.dirname(File.dirname(__FILE__))}/Classes/#{file}"
+begin
+	# instantiate the Application class
+	application_obj = Application.new()
+
+	# start the program
+	application_obj.run()
+rescue Interrupt => e
+	# print outro message
+	application_obj.printOutroMsg()
+rescue Exception => e
+	puts "\n=> ERROR: #{e}"
+	puts e.backtrace.join("\n")
 end
-dir.close
