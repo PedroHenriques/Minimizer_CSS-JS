@@ -1,0 +1,30 @@
+{
+    "run": {
+        "intro": "Scans the relevant files, based on the \"watch\" and \"ignore\" properties of the configuration file, and checks if any processing needs to be done. For more information about this command type \"help run\"",
+        "detail": "run [sleep_timer] [flags]\n\n- \"sleep_timer\": [OPTIONAL] integer or float with the number of seconds to wait between each scan cycle (only relevant if running in watch mode)\n- \"flags\": [OPTIONAL] set of flags to apply when running the scan on the relevant files\n\nFor more information about the valid flags type \"help flags\""
+    },
+    "build": {
+        "intro": "Builds all the output files, compiles all files that need compilation and executes any necessary processing, even if no changes were made to the source files. Once the output files have been built the build command ends. For more information about this command type \"help build\"",
+        "detail": "build [flags]\n\n- \"flags\": [OPTIONAL] set of flags to apply when building the output files\n\nThis command is equivalent to calling \"run -f --no-watch\"\n\nFor more information about the valid flags type \"help flags\""
+    },
+    "help": {
+        "intro": "Shows help information about the valid commands and their syntax. For more information about this command type \"help help\"",
+        "detail": "help [command]\n\n- \"command\": [OPTIONAL] name of the command detailed information should be displayed"
+    },
+    "exit": {
+        "intro": "Terminates the program"
+    },
+    "init": {
+        "intro": "Creates a configuration file in the current working directory"
+    },
+
+    "flags": {
+        "detail": {
+            "-w": "runs the program in \"watch mode\", which will make the program continuously scan for changes to the relevant files for the watch and ignore rules and rebuild the output files when needed",
+            "--no-watch": "the program will check if the output files need to be (re)built once and then stop the scan",
+            "-f": "forces all output files to be (re)built, including the compilation of all source files that need compilation. If the program is in \"watch mode\" only the first cycle will be affected",
+            "-m": "minimizes output files",
+            "--no-min": "doesn't minimize output files"
+        }
+    }
+}

@@ -1,17 +1,17 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# 															 #
-# Ruby Minimizer for CSS and JS files v2.0.0				 #
-# 															 #
-# Copyright 2017, PedroHenriques 							 #
-# http://www.pedrojhenriques.com 							 #
-# https://github.com/PedroHenriques 						 #
-# 															 #
-# Free to use under the MIT license.			 			 #
-# http://www.opensource.org/licenses/mit-license.php 		 #
-# 															 #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# 																									 	#
+# Bundler and Minimizer for Web files v3.0.0				 	#
+# 																										#
+# Copyright 2017, PedroHenriques 							 				#
+# http://www.pedrojhenriques.com 							 				#
+# https://github.com/PedroHenriques 						 			#
+# 															 											#
+# Free to use under the MIT license.			 			 			#
+# http://www.opensource.org/licenses/mit-license.php 	#
+# 															 											#
+# # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-require "#{File.dirname(__FILE__)}/Includes/autoloader.rb"
+require "#{File.dirname(__FILE__)}/includes/autoloader.rb"
 
 begin
 	# instantiate the Application class
@@ -20,8 +20,15 @@ begin
 	# start the program
 	application_obj.run()
 rescue Interrupt => e
-	# print outro message
-	application_obj.printOutroMsg()
+	# check if the Application class was instantiated
+	if application_obj != nil
+		#it was
+		# print outro message
+		application_obj.printOutroMsg()
+	else
+		# it wasn't
+		puts("\n")
+	end
 rescue Exception => e
 	puts "\n=> ERROR: #{e}"
 	puts e.backtrace.join("\n")

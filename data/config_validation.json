@@ -1,0 +1,136 @@
+{
+    "key_accepts": {
+        "watch": {
+            "optional": false,
+            "value_types": ["Array"],
+            "each_value": {
+                "value_types": ["Hash"],
+                "each_value": {
+                    "key_accepts": {
+                        "paths": {
+                            "optional": false,
+                            "value_types": ["Array"]
+                        },
+                        "out": {
+                            "optional": false,
+                            "value_types": ["String"],
+                            "path_to": "dir"
+                        },
+                        "opts": {
+                            "optional": true,
+                            "value_types": ["Array"],
+                            "value_accepts": ["css", "scss", "sass", "js", "ts", "nosub", "join", "nojoin"],
+                            "default_value": ["css", "scss", "sass", "js", "ts", "join"]
+                        },
+                        "scss_in": {
+                            "optional": true,
+                            "value_types": ["Array"],
+                            "path_to": "file"
+                        },
+                        "scss_out": {
+                            "optional": true,
+                            "value_types": ["String"],
+                            "path_to": "dir"
+                        },
+                        "sass_in": {
+                            "optional": true,
+                            "value_types": ["Array"],
+                            "path_to": "file"
+                        },
+                        "sass_out": {
+                            "optional": true,
+                            "value_types": ["String"],
+                            "path_to": "dir"
+                        },
+                        "ts_in": {
+                            "optional": true,
+                            "value_types": ["Array"],
+                            "path_to": "file"
+                        },
+                        "ts_out": {
+                            "optional": true,
+                            "value_types": ["String"],
+                            "path_to": "dir"
+                        },
+                        "requirements": {
+                            "opts": [
+                                {
+                                    "include": "scss",
+                                    "require": "scss_in"
+                                },
+                                {
+                                    "include": "sass",
+                                    "require": "sass_in"
+                                },
+                                {
+                                    "include": "ts",
+                                    "require": "ts_in"
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+
+        "ignore": {
+            "optional": true,
+            "value_types": ["Array"],
+            "each_value": {
+                "value_types": ["Hash"],
+                "each_value": {
+                    "key_accepts": {
+                        "paths": {
+                            "optional": false,
+                            "value_types": ["Array"]
+                        },
+                        "opts": {
+                            "optional": true,
+                            "value_types": ["Array"],
+                            "value_accepts": ["css", "scss", "sass", "js", "ts", "nosub", "nojoin"],
+                            "default_value": ["css", "scss", "sass", "js", "ts"]
+                        }
+                    }
+                }
+            }
+        },
+
+        "options": {
+            "optional": true,
+            "value_types": ["Hash"],
+            "each_value": {
+                "key_accepts": {
+                    "watch_mode": {
+                        "optional": true,
+                        "scan_default_value": false,
+                        "value_types": ["FalseClass", "TrueClass"]
+                    },
+                    "minimize": {
+                        "optional": true,
+                        "scan_default_value": false,
+                        "value_types": ["FalseClass", "TrueClass"]
+                    },
+                    "sleep_timer": {
+                        "optional": true,
+                        "scan_default_value": 5.0,
+                        "value_types": ["Fixnum", "Bignum", "Float"]
+                    },
+                    "sass_opts": {
+                        "optional": true,
+                        "default_value": "",
+                        "value_types": ["String"]
+                    },
+                    "tsc_opts": {
+                        "optional": true,
+                        "default_value": "-m commonjs -t es5 -d",
+                        "value_types": ["String"]
+                    },
+                    "tsconfig": {
+                        "optional": true,
+                        "value_types": ["String"]
+                    }
+                }
+            }
+        }
+    }
+}
