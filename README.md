@@ -1,4 +1,4 @@
-# Bundler and Minimizer for CSS and JS files  
+# Bundler and Minimizer for Web files  
 
 **Bundle and Minimize your Web Files.**  
 **Supports JavaScript, TypeScript, CSS, SCSS and SASS files.**
