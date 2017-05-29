@@ -199,7 +199,10 @@ Property | Optional | Value Type | Default Value | Description
 - If the option `scss` is provided in a watch rule then it must contain the property `scss_in`, even if with an empty array  
 - If the option `sass` is provided in a watch rule then it must contain the property `sass_in`, even if with an empty array  
 
-**NOTE:** If no `ts_out`, `scss_out` or `sass_out` properties are provided and there are `.ts`, `.scss` or `.sass` relevant files to process, the directory where the compiled files will be stored is the source file's directory.
+**NOTE:** If no `ts_out`, `scss_out` or `sass_out` properties are provided and there are `.ts`, `.scss` or `.sass` relevant files to process, the directory where the compiled files will be stored is the source file's directory.  
+
+**NOTE:** In the specific case of TypeScript files, if a path to a `tsconfig.json` files is provided, then the program will ignore any value provided in `ts_out` and instead parse the `tsconfig.json` file to find the path where the TypeScript compiler will actually store the compiled files.  
+The program will search for the **outDir** key of the **compilerOptions** property and if it doesn't exist then each compiled file will be stored in the same directory as their source file.  
 
 
 -> The **ignore** optional property contains an *Array* with each value being a *Hash* representing an **ignore rule**, accepting the following syntax:  
