@@ -506,14 +506,8 @@ If the objective is simply to get 1 CSS and 1 JavaScript file that bundles all o
  "watch": [
   {
     "paths": ["."],
-    "out": "assets/js",
-    "opts": ["js", "ts", "join"],
-    "ts_in": ["ts/main.ts"]
-  },
-  {
-    "paths": ["."],
-    "out": "assets/css",
-    "opts": ["css", "scss", "sass", "join"],
+    "out": "assets",
+    "ts_in": ["ts/main.ts"],
     "scss_in": ["scss/main.scss"],
     "sass_in": ["sass/test1.sass"]
   }
@@ -531,12 +525,10 @@ The changes to the project's directory tree after executing the program's `run` 
 my_app
  |_ .sass-cache
  |_ assets
-    |_ css
-       |_ bundle.css (*)
-       |_ bundle.css.json (*)
-    |_ js
-       |_ bundle.js (*)
-       |_ bundle.js.json (*)
+    |_ bundle.css (*)
+    |_ bundle.css.json (*)
+    |_ bundle.js (*)
+    |_ bundle.js.json (*)
  |_ js
     |_ classes
        |_ Engine.js
@@ -561,9 +553,47 @@ my_app
 
 The files that were created by the program are marked with an **(*)** while the rest of the changes are made by the TypeScript and SASS compilers.  
 
+**NOTE:** by not providing the `opts` property to the watch rule, the default value will be used which will search for all file of the supported file types, looking in sub-directories and bundling the relevant files into 1 JavaScript and 1 CSS file.  
+
 **NOTE:** the TypeScript compiler was provided with the path to the `tsconfig.json` file referenced in the `bundler.config.json` file.  
 
 **NOTE:** when providing relative paths in the configuration file, using `.` or `./` is equivalent.  
+
+### 2) Adding different paths for the bundle JS and CSS files  
+
+If the following changes are made to the configuration file:  
+
+```
+"watch": [
+  {
+    "paths": ["."],
+    "out": "assets/js",
+    "opts": ["js", "ts", "join"],
+    "ts_in": ["ts/main.ts"]
+  },
+  {
+    "paths": ["."],
+    "out": "assets/css",
+    "opts": ["css", "scss", "sass", "join"],
+    "scss_in": ["scss/main.scss"],
+    "sass_in": ["sass/test1.sass"]
+  }
+]
+```
+
+then the project's directory tree would be:  
+
+```
+my_app
+ |_ assets
+    |_ css
+       |_ bundle.css
+       |_ bundle.css.json
+    |_ js
+       |_ bundle.js
+       |_ bundle.js.json
+ |_ ...
+```
 
 ### 2) Adding ignore rules  
 
