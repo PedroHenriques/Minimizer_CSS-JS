@@ -1,6 +1,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # 																									 	#
-# Bundler and Minimizer for Web files v3.0.0				 	#
+# Bundler and Minimizer for Web files v3.1.0				 	#
 # 																										#
 # Copyright 2017, PedroHenriques 							 				#
 # http://www.pedrojhenriques.com 							 				#

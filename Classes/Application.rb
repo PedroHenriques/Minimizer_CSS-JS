@@ -1,6 +1,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # 																									 	#
-# Bundler and Minimizer for Web files v3.0.0				 	#
+# Bundler and Minimizer for Web files v3.1.0				 	#
 # 																										#
 # Copyright 2017, PedroHenriques 							 				#
 # http://www.pedrojhenriques.com 							 				#
@@ -27,7 +27,7 @@ class Application
 		rescue Errno::ENOENT
 			# something went wrong while opening and parsing the JSON file
 			# raise an error message
-			raise("=> ERROR: An error occured while opening/parsing the file #{File.dirname(File.dirname(__FILE__))}/data/config_validation.json.")
+			raise("=> ERROR: An error occured while opening/parsing the file \"#{File.dirname(File.dirname(__FILE__))}/data/config_validation.json\"")
 		end
 
 		# class variables storing the regex patters used through out this class
@@ -1562,9 +1562,9 @@ class Application
 
 		# receives an absolute path to an entry file and will crawl it, storing
 		# the files being included in @file_crawl_data
-		# expects the callback function to return an array of file paths or false if it failled
+		# expects the callback function to a string or false if it failled
 		# returns true if successful, false otherwise
-		# NOTE: the callback can be a lambda/Proc or a string with a method name
+		# NOTE: the callback can be a lambda or a Proc
 		def crawlFile(entry_path, output_path_parts, re_pattern, callback)
 			# store the dirname of the entry point file
 			entry_dirname = File.dirname(entry_path)
@@ -1617,40 +1617,30 @@ class Application
 
 					# loop while there are re_pattern matches left in file_content
 					while (re_match = re_pattern.match(file_content)) != nil
-						# check if the callback is a string with the name of a method to be called
-						if callback.class.to_s === "String"
-							# it is, so call the method with that name
-							callback_return = self.send(callback.to_s, crawl_path, re_match)
-						else
-							# it isn't -> its an anonymous function (lambda or Proc)
-							# call the anonymous function
-							callback_return = callback.call(crawl_path, re_match)
-						end
+						# call the anonymous function
+						callback_return = callback.call(crawl_path, re_match)
 
 						# check if the lambda function returned a failure or an invalid data type
-						if callback_return === false || !callback_return.class.to_s.eql?("Array")
+						if callback_return === false || !callback_return.class.to_s.eql?("String")
 							# it did
 							# something went wrong while executing the lambda function
 							# return a failure
 							return(false)
 						else
 							# it didn't
-							# loop through each returned path
-							callback_return.each { |import_path|
-								# check if this file found hasn't been encountered already
-								if !imported_abs_paths.include?(import_path) && !file_queue.include?(import_path)
-									# it hasn't
-									# add it to the queue
-									file_queue.push(import_path)
-								end
+							# check if the file found hasn't been encountered already
+							if !imported_abs_paths.include?(callback_return) && !file_queue.include?(callback_return)
+								# it hasn't
+								# add it to the queue
+								file_queue.push(callback_return)
+							end
 
-								# add the file found to the crawled file's array of imported files
-								@file_crawl_data[crawl_path][:imports].push(import_path)
-							}
+							# add the file found to the crawled file's array of imported files
+							@file_crawl_data[crawl_path][:imports].push(callback_return)
 						end
 
 						# change file_content to have all the text after this match
-					    file_content = re_match.post_match
+						file_content = re_match.post_match
 					end
 				else
 					# this file doesn't needs to be crawled
@@ -1818,7 +1808,7 @@ class Application
 		def crawlTypeScript(entry_path, output_path_parts)
 			# build the lambda function that will be applied to each capture group
 			lambda_func = lambda { |crawl_path, re_match|
-				return(resolveTSImportPath(crawl_path, re_match[1], []))
+				return(resolveNodeImportPath(crawl_path, re_match[1], [".tsx", ".ts"]))
 			}
 
 			# check if a path to a tsconfig.json file was provided in the configuration file
@@ -1865,160 +1855,209 @@ class Application
 			return(true)
 		end
 
-		# resolves a TypeScript module import on file crawl_path with import path import_path
-		# receives an optional array with specific extensions to look for in imports without an extension
-		# these extensions will have a higher priority than the default ones
-		# returns an array of absolute paths or false if the import couldn't be resolved
-		def resolveTSImportPath(crawl_path, import_path, specific_ext = [])
-			# stores the file extensions assumed by the TypeScript compiler for "import" statements
+		# resolves a module import, based on Node's import resolution rules, on file crawl_path
+		# with import path import_path receives an optional array with specific extensions
+		# to look for in imports without an extension these extensions will have a higher
+		# priority than the default ones
+		# returns a string with an absolute paths or false if the import couldn't be resolved
+		def resolveNodeImportPath(crawl_path, import_path, specific_exts = [])
+			# stores the file extensions assumed Node for "import" statements
 			# that don't have an explicit file extension
 			# NOTE: add a "." to each extension here in order to allow code optimization below
-			# NOTE: store the paths in reverse order to the intended order of their crawl
-			assumed_ext = [".d.ts", ".tsx", ".ts"]
+			# NOTE: since this program is built with websites in mind, the extension ".node"
+			# 			is not being considered
+			assumed_exts = [".js", ".json"]
 
 			# check if any specific extensions were provided
-			if specific_ext.class.to_s === "Array" && !specific_ext.empty?
+			if specific_exts.class.to_s === "Array" && !specific_exts.empty?
 				# there were
-				# add them to the end of assumed_ext (so that they will be used first)
-				assumed_ext = assumed_ext | specific_ext
+				# add them to the start of assumed_ext (so that they will be used first)
+				assumed_exts = specific_exts | assumed_exts
 			end
 
-			# get the directory path of the file being crawled
-			crawl_dirname = File.dirname(crawl_path)
+			# stores the anonymous function used to load an import as a file
+			# returns a string with the file's absolute path, a "" if no valid path could be found
+			# or false if an error occured (the message will be printed here)
+			load_as_file = lambda { |dir_abs_path, import_rel_path, search_exts|
+				# check if the "import_rel_path" has an explicit file extension
+				if (re_match = /\.([^\.\/\\]+)$/i.match(import_rel_path)) != nil
+					# it does
+					# search only for that extension
+					search_exts = [re_match[1]]
+				end
 
-			# get this import's path
-			match_path = /["']([^"']+)["']/i.match(import_path)[1]
+				# loop through each search extension
+				search_exts.each { |ext|
+					# build the "import_rel_path"'s tentative absolute path, using "dir_abs_path"
+					# as the reference point
+					file_abs_path = File.absolute_path("#{import_rel_path}#{ext}", dir_abs_path)
 
-			# check if this match is a "relative module import"
-			if match_path.start_with?("/", "./", "../")
-				# it is
-				rel_module = true
-			else
-				# it isn't -> its a "non-relative module import"
-				rel_module = false
-			end
+					# check if this file path is valid
+					if File.exist?(file_abs_path)
+						# it is
+						# return this file's absolute path
+						return(file_abs_path)
+					end
+				}
 
-			# stores the dirname to check for the existance of a "node_modules" directory
-			# starting with this match's directory
-			cur_dirname = crawl_dirname
+				# at this point no valid file absolute path was found
+				return("")
+			}
 
-			# stores whether this match has an explicit extension
-			has_extension = true
+			# stores the anonymous function used to load an import as a directory
+			# returns a string with the file's absolute path, a "" if no valid path could be found
+			# or false if an error occured (the message will be printed here)
+			# NOTE: needs to be provided the search extensions because this anonymous function might
+			# 			call load_as_file, which requires that information
+			load_as_dir = lambda { |dir_abs_path, import_rel_path, search_exts|
+				# build the absolute path to the assumed directory, using "dir_abs_path"
+				# as the reference point
+				assumed_abs_path = File.absolute_path(import_rel_path, dir_abs_path)
 
-			# stores the extensions that will need to be looped over
-			extensions = []
-
-			# check if this match has an explicit file extension
-			if match_path.index(/\.[^\.\/\\]+$/) == nil
-				# it doesn't
-				# loop through all the extensions assumed by the TypeScript compiler
-				extensions = assumed_ext.clone
-
-				# flag this match as not having an explicit extension
-				has_extension = false
-			end
-
-			# loop through the directory tree for this match's file
-			begin
-				# check if the current directory has a "node_modules" directory
-				if rel_module || File.directory?("#{cur_dirname}/node_modules")
-					# it has
-					# loop while there are relevant extensions left
-					# can terminate early if a valid path is found
+				# check if a "package.json" file exists in this directory
+				if File.exist?("#{assumed_abs_path}/package.json")
+					# it does
 					begin
-						# get an extension to use
-						ext = extensions.pop()
+						# open and parse the package.json file
+						package_json_content = JSON.parse(IO.read("#{assumed_abs_path}/package.json"))
+					rescue Errno::ENOENT
+						# something went wrong while opening and parsing the JSON file
+						# print warning message
+						@cli_obj.printStr(
+							"=> WARNING: Couldn't parse the \"package.json\" located at \"#{assumed_abs_path}\"",
+							true
+						)
 
-						# build this tentative file's absolute path
-						file_abs_path = File.absolute_path("#{match_path}#{ext}", crawl_dirname)
+						# return a failure
+						return(false)
+					end
 
-						# check if this file path is valid
-						if File.exist?(file_abs_path)
-							# it is
-							# return this file's absolute path
-							return([file_abs_path])
+					# check if the "package.json" file has a "main" field
+					if package_json_content.has_key?("main")
+						# it has
+						# try loading the combined path of "assumed_abs_path" + "path in main field"
+						# as a file
+						lambda_return = load_as_file.call(assumed_abs_path, package_json_content["main"], search_exts)
+
+						# check if an absolute path for the import was found or an error occured
+						if lambda_return === false || !lambda_return.empty?
+							# yes, so return it
+							return(lambda_return)
 						end
-					end while !extensions.empty?
 
-					# check if this match has an explicit extension
-					if !has_extension
-						# it doesn't
-						# the TypeScript compiler will now assume this match is pointing to a directory
-						# build the directory path
-						assumed_dir_path = "#{crawl_dirname}/#{match_path}"
+						# try loading the combined path of "assumed_abs_path" + "path in main field"
+						# as an index (use "load_as_file" giving ./index as the relative path)
+						lambda_return = load_as_file.call(assumed_abs_path, "#{package_json_content["main"]}/index", search_exts)
 
-						# check if this match is a valid directory
-						if Dir.exist?(assumed_dir_path)
-							# it is
-							# check if it has a package.json file
-							if File.exist?("#{assumed_dir_path}/package.json")
-								# it has
-								begin
-									# open and parse the package.json file
-									package_json_content = JSON.parse(IO.read("#{assumed_dir_path}/package.json"))
-								rescue Errno::ENOENT
-									# something went wrong while opening and parsing the JSON file
-									# print warning message
-									@cli_obj.printStr(
-										"=> WARNING: Couldn't parse the \"package.json\" located at \"#{assumed_dir_path}\"",
-										true
-									)
-
-									# return a failure
-									return(false)
-								end
-
-								# loop through the relevant properties of the package.json file
-								["typings", "types"].each { |property_name|
-									# check if the file has this property
-									if package_json_content.has_key?(property_name)
-										# it has
-										# build this tentative file's absolute path
-										file_abs_path = "#{assumed_dir_path}/#{package_json_content[property_name]}"
-
-										# check if this file path is valid
-										if File.exist?(file_abs_path)
-											# it is
-											# return this file's absolute path
-											return([file_abs_path])
-										end
-									end
-								}
-							end
-
-							# check if an "index.*" file exists in this directory
-							assumed_ext.each { |ext|
-								# build this tentative file's absolute path
-								file_abs_path = "#{assumed_dir_path}/index#{ext}"
-
-								# check if this file path is valid
-								if File.exist?(file_abs_path)
-									# it is
-									# return this file's absolute path
-									return([file_abs_path])
-								end
-							}
+						# check if an absolute path for the import was found or an error occured
+						if lambda_return === false || !lambda_return.empty?
+							# yes, so return it
+							return(lambda_return)
 						end
 					end
 				end
 
-				# at this point, the loop is going to continue
-				# check if there is any more directories to go up
-				if cur_dirname != (next_dirname = File.dirname(cur_dirname))
-					# there is
-					# move up 1 directory
-					cur_dirname = next_dirname
-				else
-					# there isn't
-					# store an empty string to terminate this loop
-					cur_dirname = ""
+				# try loading "assumed_abs_path" as an index (use "load_as_file" giving ./index as the relative path)
+				lambda_return = load_as_file.call(assumed_abs_path, "./index", search_exts)
+
+				# check if an absolute path for the import was found or an error occured
+				if lambda_return === false || !lambda_return.empty?
+					# yes, so return it
+					return(lambda_return)
 				end
-			end while !rel_module && !cur_dirname.empty?
+
+				# at this point no valid file absolute path was found
+				return("")
+			}
+
+			# get the directory path of the file being crawled
+			crawl_dirname = File.dirname(crawl_path)
+
+			# check if the provided import path is wrapped in quotes or hasn't been
+			# extracted from the import statement
+			if (re_match = /["']([^"']+)["']/i.match(import_path)) != nil
+				# it does
+				# get the actual import path
+				import_path = re_match[1]
+			end
+
+			# check if the import path is a relative path
+			if import_path.start_with?("/", "./", "../")
+				# it is
+				# treat the import as being a FILE
+				# call the anonymous function to load the import path as a file
+				# using the file with the import statement as the reference point
+				lambda_return = load_as_file.call(crawl_dirname, import_path, assumed_exts)
+
+				# check if an absolute path for the import was found or an error occured
+				if lambda_return === false || !lambda_return.empty?
+					# yes, so return it
+					return(lambda_return)
+				end
+
+				# treat the import as being a DIRECTORY
+				# call the anonymous function to load the import path as a directory
+				# using the file with the import statement as the reference point
+				lambda_return = load_as_dir.call(crawl_dirname, import_path, assumed_exts)
+
+				# check if an absolute path for the import was found or an error occured
+				if lambda_return === false || !lambda_return.empty?
+					# yes, so return it
+					return(lambda_return)
+				end
+			end
+
+			# stores the dirname to check for the existance of a "node_modules" directory
+			# starting with the directory of the file being crawled
+			cur_dirname = crawl_dirname
+
+			# try loading the import as a NODE MODULE
+			# loop through each directory in "crawl_dirname"'s directory tree,
+			while !cur_dirname.empty?
+				# check if "cur_dirname" ends with "node_modules"
+				if cur_dirname.index(/\/node_modules\/?$/i) === nil
+					# it doesn't, so add "/base_dirname" to it
+					base_dirname = "#{cur_dirname}/node_modules"
+				else
+					# it does, so it can be used as is
+					base_dirname = cur_dirname
+				end
+
+				# try loading base_dirname/import_path as a file
+				lambda_return = load_as_file.call(base_dirname, import_path, assumed_exts)
+
+				# check if an absolute path for the import was found or an error occured
+				if lambda_return === false || !lambda_return.empty?
+					# yes, so return it
+					return(lambda_return)
+				end
+
+				# try loading base_dirname/import_path as a directory
+				lambda_return = load_as_dir.call(base_dirname, import_path, assumed_exts)
+
+				# check if an absolute path for the import was found or an error occured
+				if lambda_return === false || !lambda_return.empty?
+					# yes, so return it
+					return(lambda_return)
+				end
+
+				# get the directory to be used in the next iteration
+				next_dirname = File.dirname(cur_dirname)
+
+				# check if the directory used in this iteration is the root of "crawl_path"
+				if cur_dirname.eql?(next_dirname)
+					# it is, so exit the loop
+					break
+				end
+
+				# update the directory path for the next iteration
+				cur_dirname = next_dirname
+			end
 
 			# at this point a valid file path couldn't be found for this match
 			# print warning message
 			@cli_obj.printStr(
-				"=> WARNING: Couldn't find the file with signature \"#{match_path}\" being imported in the file \"#{crawl_path}\"",
+				"=> WARNING: Couldn't find the file with signature \"#{import_path}\" being imported in the file \"#{crawl_path}\"",
 				true
 			)
 
@@ -2308,8 +2347,8 @@ class Application
 		# receives the absolute path to an entry point TypeScript file and its combined JS absolute path
 		# returns true if successful, false otherwise
 		def combineTypeScript(entry_path, combined_path)
-			# store the lambda that will read a file and do all the processing needed
-			# returns that file's content ready to be added to the combined JS file or
+			# store the lambda that will read a file and paste all the imported files' content
+			# returns the content of all the files in the import chain together or
 			# false on failure
 			# NOTE: will be called recursively
 			lambda_func = lambda { |files_handled, file_path|
@@ -2334,27 +2373,10 @@ class Application
 				# remove all the references defining the "__esModule" property on the "exports" object
 				file_content.gsub!(/Object\.defineProperty\(exports, "__esModule"[^;]+;\n?/i, "")
 
-				# find all the code with "exports."
-				while (re_match = /exports\.([^;=\t ]+)[\t ]*=[\t ]*([^;]+);\n?/i.match(file_content)) != nil
-					# check if the 2 capture groups have the same content
-					if re_match[1] === re_match[2]
-						# they do
-						# in these cases the entire match will be removed
-						replacement_str = ""
-					else
-						# they don't
-						# in these cases only the "exports." is removed
-						replacement_str = re_match[0].gsub!(/^exports\./i, "")
-					end
-
-					# update the file content replacing the match string with its replacement
-					file_content = "#{re_match.pre_match}#{replacement_str}#{re_match.post_match}"
-				end
-
 				# loop through all the imports
-				while (re_match = /var[\t ]+([^;=\t ]+)[\t ]*=[\t ]*require\(([^\);]+)\);/i.match(file_content)) != nil
+				while (re_match = /(?:var|let|const)[\t ]+([^;=\t ]+)[\t ]*=[\t ]*require\(([^\);]+)\);/i.match(file_content)) != nil
 					# resolve this import path to get an absolute path to the imported JS file
-					import_path = resolveTSImportPath(file_path, re_match[2], [".js"])
+					import_path = resolveNodeImportPath(file_path, re_match[2], [])
 
 					# check if an absolute path for this imported file was found
 					if import_path === false
@@ -2366,38 +2388,111 @@ class Application
 						return(false)
 					end
 
-					# stores the string that will replace this import statement
-					replacement_str = ""
+					# check if the imported file is a JSON file
+					if import_path.index(/\.json$/i) != nil
+						# it is
+						begin
+							# read and parse the imported JSON file
+							import_json_content = JSON.parse(IO.read(import_path))
+						rescue Errno::ENOENT
+							# something went wrong while opening and parsing the JSON file
+							# print error message
+							@cli_obj.printStr("=> ERROR: An error occured while opening/parsing the file \"#{import_path}\"", true)
 
-					begin
-						# check if the imported file has already been pasted somewhere else in the import chain
-						if !files_handled.include?(import_path[0])
-							# it hasn't
-							# get the imported file's processed content
-							replacement_str = lambda_func.call(files_handled, import_path[0])
+							# return failure
+							return(false)
+						end
 
-							# check if the imported file was successfully processed
-							if replacement_str === false
-								# it wasn't
-								# return failure
-								# NOTE: any error messages were printed by the lambda function call
-								return(false)
+						# update the file content by removing the import statement
+						file_content = "#{re_match.pre_match}#{re_match.post_match}"
+
+						# loop through all the references to the variable this import was being stored in
+						while (ref_re_match = Regexp.new("#{Regexp.escape("#{re_match[1]}")}((?:\\.\\w+)+)", Regexp::IGNORECASE).match(file_content)) != nil
+							# stores the value to be replaced by this reference
+							ref_replace_value = import_json_content
+
+							# loop through the chain of properties being called in this reference
+							ref_re_match[1].split(".").each { |property|
+								# check if this "property" is empty
+								if property.empty?
+									# it is, so move on to next one
+									next
+								end
+
+								# check if the current chunk of the imported JSON file has this property
+								if ref_replace_value[property] === nil
+									# it doesn't
+									# print error message
+									@cli_obj.printStr(
+										"=> ERROR: The imported JSON file \"#{import_path}\" doesn't have the property \"#{property}\" in the reference \"#{re_match[1]}#{ref_re_match[1]}\"",
+										true
+									)
+
+									# return failure
+									return(false)
+								end
+
+								# advance deeper in the imported JSON file's content
+								ref_replace_value = ref_replace_value[property]
+							}
+
+							# update the file content by replacing this reference with the replacement value
+							file_content = "#{ref_re_match.pre_match}\"#{ref_replace_value}\"#{ref_re_match.post_match}"
+						end
+					else
+						# it isn't
+						# stores the string that will replace this import statement
+						replacement_str = ""
+
+						begin
+							# check if the imported file has already been pasted somewhere else in the import chain
+							if !files_handled.include?(import_path)
+								# it hasn't
+								# get the imported file's processed content
+								replacement_str = lambda_func.call(files_handled, import_path)
+
+								# check if the imported file was successfully processed
+								if replacement_str === false
+									# it wasn't
+									# return failure
+									# NOTE: any error messages were printed by the lambda function call
+									return(false)
+								end
+							end
+						rescue IOError
+							# couldn't read this file
+							# print error message
+							@cli_obj.printStr("=> ERROR: The file \"#{import_path}\", being imported in \"#{file_path}\", couldn't be read", true)
+
+							# return failure
+							return(false)
+						end
+
+						# update the file content replacing the import statement with that file's processed content
+						file_content = "#{re_match.pre_match}#{replacement_str}#{re_match.post_match}"
+
+						# stores the regex object used to find any references to the variable this import was being stored in
+						# being used to import that module's default export
+						default_import_re = Regexp.new(Regexp.escape("#{re_match[1]}.default("), Regexp::IGNORECASE)
+
+						# check if there are any references to the import of the default export
+						if file_content.index(default_import_re) != nil
+							# there are
+							# acquire the contents of the file being imported
+							imported_file_content = IO.read(import_path, mode: "r")
+
+							# find the name of property that is the imported module's default export
+							# NOTE: it might not exist if, for example, the imported module has a function named "default"
+							if (re_match_default_export = /exports\.default[\t\n ]*=[\t\n ]*([\w]+);/i.match(imported_file_content)) != nil
+								# a default export was found
+								# replace all references to this default import with the corresponding property's name
+								file_content.gsub!(default_import_re, "#{re_match_default_export[1]}(")
 							end
 						end
-					rescue IOError
-						# couldn't read this file
-						# print error message
-						@cli_obj.printStr("=> ERROR: The file \"#{import_path[0]}\", being imported in \"#{file_path}\", couldn't be read",true)
 
-						# return failure
-						return(false)
+						# remove any remaining references to the variable this import was being stored in
+						file_content.gsub!(Regexp.new(Regexp.escape("#{re_match[1]}."), Regexp::IGNORECASE), "")
 					end
-
-					# update the file content replacing the import statement with that file's processed content
-					file_content = "#{re_match.pre_match}#{replacement_str}#{re_match.post_match}"
-
-					# remove any references to the variable this import was being stored in
-					file_content.gsub!(Regexp.new(Regexp.escape("#{re_match[1]}."), Regexp::IGNORECASE), "")
 				end
 
 				# return the processed file content
@@ -2405,7 +2500,7 @@ class Application
 				return(handleUseStrict(file_content))
 			}
 
-			# call the lambda function to process the entry point file
+			# call the lambda function to process the imports
 			combined_file_content = lambda_func.call([], @file_crawl_data[entry_path][:out_path])
 
 			# check if the combined file's content was successfully created
@@ -2416,6 +2511,71 @@ class Application
 
 				# return failure
 				return(false)
+			end
+
+			# stores the variable names already encountered in the global scope
+			# NOTE: used in the loop below to add a "var " to any variables in the global scope
+			# 			as the "exports." statement is remmoved from them
+			declared_vars = []
+
+			# process all "exports." statements and for each one decide how to handle it
+			# loop while there are "exports." statements left to handle
+			while (re_match = /exports\.([\w]+)[\t\n ]*([^\t\n ])[\t\n ]*([^;]+)[;,\n\)\}]\n?/i.match(combined_file_content)) != nil
+				# check if this match is an assignment and if the assigned value and the receiver have the same content
+				# or if it's a default export
+				if re_match[2].eql?("=") && (re_match[1].eql?(re_match[3]) || re_match[1].eql?("default"))
+					# yes
+					# in these cases the entire match will be removed
+					replacement_str = ""
+				else
+					# no -> either this match is not an assignment or the assigned value
+					# and receiver don't have the same content
+					# check if this match isn't an assignment
+					if !re_match[2].eql?("=")
+						# it isn't an assignment
+						# in these cases remove the "exports."
+						gsub_str = ""
+					else
+						# it is an assignment
+						# build the anonymous function that removes all "{" from a string
+						lambda_func = lambda { |file_path, text|
+							# return the text with all "{" removed
+							return(text.gsub(/\{/i, ""));
+						}
+
+						# count the number of relevant "{" that exist before this match
+						open_bracket_count = re_match.pre_match.length - transformFile(@file_crawl_data[entry_path][:out_path], lambda_func, re_match.pre_match.clone).length
+
+						# build the anonymous function that removes all "}" from a string
+						lambda_func = lambda { |file_path, text|
+							# return the text with all "{" removed
+							return(text.gsub(/\}/i, ""));
+						}
+
+						# count the number of relevant "}" that exist before this match
+						close_bracket_count = re_match.pre_match.length - transformFile(@file_crawl_data[entry_path][:out_path], lambda_func, re_match.pre_match.clone).length
+
+						# check if this match is in the global scope and if it's the first
+						# time this symbol is encountered
+						if open_bracket_count === close_bracket_count && !declared_vars.include?(re_match[1])
+							# it is
+							# replace the "exports." with "var " since this variable is being declared here
+							gsub_str = "var "
+
+							# store that this symbol has been encountered in the global scope
+							declared_vars.push(re_match[1])
+						else
+							# it isn't, so just remove the "exports."
+							gsub_str = ""
+						end
+					end
+
+					# store the replacement string
+					replacement_str = re_match[0].gsub!(/^exports\./i, gsub_str)
+				end
+
+				# update the file content replacing the match string with its replacement
+				combined_file_content = "#{re_match.pre_match}#{replacement_str}#{re_match.post_match}"
 			end
 
 			# check if the combined file already exists
@@ -2743,367 +2903,180 @@ class Application
 		# receives a path to a file and minimizes it
 		# returns TRUE if successful or FALSE otherwise
 		def minimizeFile(file_path)
-			# open the file in read mode
-			file = IO.read(file_path, mode: "r")
+			# create the anonymous function with the code to minimize the file's content
+			lambda_func = lambda { |file_path, text|
+				# stores all characters that don't need to have a whitespace before or after
+				# NOTE: if they are inside a string, a regex or a comment they won't be considered for whitespace removal
+				no_whsp_chars = [";",":",",","{","}","[","]","(",")","+","-","*","/","<",">","||","&&","=","!="]
 
-			# stores the minimized text as it is built
-			min_str = ""
+				# stores the index to start searching for comments in this iteration chunk's text
+				regex_start = 0
 
-			# stores temporary parts of the file for processing
-			aux_str = ""
+				# loop while there are inline comments to process
+				while (match_data = text.match(@@re_inline_comment_, regex_start)) != nil
+					# stores the start and end indexes of this comment
+					comment_pos = Array.new
 
-			# stores this iteration's text chunk starting index
-			chunk_pos_i = 0
-			# stores this iteration's text chunk ending index
-			chunk_pos_e = 0
+					# get the start index for this comment
+					comment_pos[0] = match_data.begin(1)
 
-			# stores whether this iteration is handling a string
-			inside_str = false
-
-			# check if the first character in the file is a single or double quote
-			if file[0].match(/[\'\"]/) != nil
-				# it is, so the file starts with a string
-				inside_str = true
-			end
-
-			# stores whether this iteration is handling a regex
-			inside_regex = false
-
-			# stores all characters that don't need to have a whitespace before or after
-			# NOTE: if they are inside a string, a regex or a comment they won't be considered for whitespace removal
-			no_whsp_chars = [";",":",",","{","}","[","]","(",")","+","-","*","/","<",">","||","&&","=","!="]
-
-			# loop while there's content to process
-			# NOTE: the logic used is based on the existance of strings in the minimized file
-			# 		since strings are not to be processed, the code will search for the start of the next string
-			# 		and process any content that is between strings
-			while chunk_pos_e < file.length - 1
-				# calculate the index to start searching the next iteration's start index
-				search_start_index = chunk_pos_e + 1
-
-				# check if this iteration's chunk is handling a string or a regex
-				if inside_str || inside_regex
-					# it is
-					# check if its handling a string
-					if inside_str
-						# it is
-						# find the relevant closing quote to the currently open string
-						# NOTE: the closing quote has to be of the same type as the opening quote (single or double)
-						# NOTE: the character at index "chunk_pos_e" is the currently open string's quote
-						# the relevant quotes are the ones either not precided by a back slash OR with an even number
-						# of backslashes preciding it -> in both cases the quote is not escaped
-
-						# find the closest non-escaped quote with preciding backslashes
-						match_even_slash = file[search_start_index..-1].match("[^\\\\](?:\\\\\\\\)+(#{file[chunk_pos_e]})")
-
-						# check if the character at index "search_start_index" is the relevant closing quote
-						# this catches an empty string
-						if file[search_start_index] === file[chunk_pos_e]
-							# it is -> this string in the source file is an empty string ("" or '')
-							match_no_slash_re = "(#{file[chunk_pos_e]})"
-						else
-							# it isn't, so find the closest relevant quote
-							match_no_slash_re = "[^\\\\](#{file[chunk_pos_e]})"
-						end
-
-						# find the closest non-escaped quote with preciding backslashes
-						match_no_slash = file[search_start_index..-1].match(match_no_slash_re)
-
-						# check if a quote was found
-						if match_no_slash === nil && match_even_slash === nil
-							# it wasn't, so set the end index to the EOF
-							chunk_pos_e = file.length
-						# check if only a quote precided by an even number of backslashes was found
-						elsif match_no_slash === nil
-							# it was, so calculate the index in "file" of the quote found
-							# NOTE: the capture group's index already compensates for the fact that the full match's index
-							# 		is offset by the number of backslashes before the quote
-							chunk_pos_e = search_start_index + match_even_slash.begin(1)
-						# check if only a quote precided by no backslashes was found
-						elsif match_even_slash === nil
-							# it was, so calculate the index in "file" of the quote found
-							# NOTE: the capture group's index already compensates for the fact that the full match's index
-							# 		is offset by the number of backslashes before the quote
-							chunk_pos_e = search_start_index + match_no_slash.begin(1)
-						else
-							# both cases of a quote were found
-							# determine the one that comes first
-							if match_no_slash.begin(1) <= match_even_slash.begin(1)
-								# the quote with no preciding backslashes comes first
-								quote_index = match_no_slash.begin(1)
-							else
-								# the quote with even number of preciding backslashes comes first
-								quote_index = match_even_slash.begin(1)
-							end
-
-							# NOTE: the capture group's index already compensates for the fact that the full match's index
-							# 		is offset by the number of backslashes before the quote
-							chunk_pos_e = search_start_index + quote_index
-						end
+					# check if the "//" found is an actual inline comment
+					if text.slice(comment_pos[0]-5...comment_pos[0]).match(/http:/) != nil or text.slice(comment_pos[0]-6...comment_pos[0]).match(/https:/) != nil
+						# it isn't, so ignore this "//"
+						# advance the starting index for the next regex search to after this "//"
+						regex_start = comment_pos[0] + 1
 					else
-						# it isn't, its handling a regex
-						chunk_pos_e += file[chunk_pos_e..-1].match(@@re_regex_)[1].length - 1
+						# it is
+						# find the end of the next inline comment -> either the 1st line break or the end of this chunk of text
+						regex_match = text.match(@@re_line_break_, comment_pos[0])
+
+						# check if any line breaks were found after this comment's start index
+						if regex_match === nil
+							# no
+							# this inline comment ends at this iteration chunk's text end
+							comment_pos[1] = text.length - 1
+						else
+							# yes
+							# this inline comment ends at that line break's index
+							comment_pos[1] = regex_match.begin(1)
+						end
+
+						# edit the text by removing this inline comment
+						text = text.slice(0...comment_pos[0]) + text.slice(comment_pos[1]..-1)
 					end
+				end
 
-					# don't change any of the text inside a string or regex
-					# get this iteration's text chunk, including both the start and end
-					# string/regex delimiters
-					aux_str = file[chunk_pos_i..chunk_pos_e]
+				# stores this iteration chunk's text in slices
+				# those slices are formed by spliting the text across the multiline comments
+				# this allows for different processing to be done to the comments
+				# and to the non-comment text
+				text_slices = Array.new
 
-					# check if the quote or regex found as the end for this iteration's text chunk is inside a comment
-					if insideComment?(aux_str)
-						# it is, so ignore it
-						next
-					end
+				# loop while there are multiline comments to process
+				while (match_data = text.match(@@re_multiline_comment_start_)) != nil
+					# stores the start and end indexes of this comment
+					comment_pos = Array.new
 
-					# adjust control variables for next iteration
-					# since this iteration was handling a string/regex, then the next iteration
-					# won't be handling a string/regex
-					inside_str = false
-					inside_regex = false
+					# get the start index for this comment
+					comment_pos[0] = match_data.begin(1)
 
-					# the next iteration will start in the character after this iteration's
-					# string/regex end delimiter
-					chunk_pos_i = chunk_pos_e + 1
-				else
-					# it isn't inside a string or regex
-					# find the next single or double quote and the next regex in the source file
-					# NOTE: this pattern doesn't match a string in index zero of the file, but if there
-					# 		is a string at index zero, this loop starts with inside_str = true
-					str_index = file.index(/[^\\][\"\']/, search_start_index)
-					re_index = file.index(@@re_regex_, search_start_index)
+					# get the end index for this comment
+					comment_pos[1] = text.index(@@re_multiline_comment_end_)
 
-					# check if a quote or regex was found
-					if str_index === nil && re_index === nil
+					# check if this comments end was found
+					if comment_pos[1] === nil
 						# it wasn't
-						# set the end index to the EOF
-						chunk_pos_e = file.length
+						# assume the comment ends at the end of the text
+						comment_pos[1] = text.length - 1
+
+						# print error message
+						@cli_obj.printStr("=> WARNING: In the file \"#{file_path}\", there is a multiline comment that doesn't have an explicit end symbol", true)
 					else
-						# stores if this iteration stops on a string
-						ends_on_str = false
-
-						# check if only a string was found
-						if re_index === nil
-							# it was
-							ends_on_str = true
-						# check if both a string and a regex were found
-						# and if the string comes first
-						elsif str_index != nil && str_index <= re_index
-							# the string comes first
-							ends_on_str = true
-						end
-
-						# check if this iteration ends on a string
-						if ends_on_str
-							# it does
-							# add 1 since the index of the match starts on the character before the quote
-							# due to the regex pattern being used
-							chunk_pos_e = str_index + 1
-
-							# the next iteration will deal with a string
-							inside_str = true
-						else
-							# it doesn't, it ends on a regex
-							# set the end index to the regex's start delimiter
-							chunk_pos_e = re_index
-
-							# the next iteration will deal with a regex
-							inside_regex = true
-						end
+						# it was -> advance the index to after the comment's end characters
+						comment_pos[1] += 1
 					end
 
-					# get this iteration's text chunk, excluding the quote at the end of the chunk
-					aux_str = file[chunk_pos_i...chunk_pos_e]
-
-					# check if the quote or regex found as the end for this iteration's text chunk is inside a comment
-					if insideComment?(aux_str)
-						# it is
-						# the next iteration won't be inside a string or a regex, since the found delimiter is going
-						# to be ignored
-						inside_str = false
-						inside_regex = false
-
-						# ignore it
-						next
-					end
-
-					# stores the index to start searching for comments in this iteration chunk's text
-					regex_start = 0
-
-					# loop while there are inline comments to process
-					match_data = aux_str.match(@@re_inline_comment_, regex_start)
-					while match_data != nil
-						# stores the start and end indexes of this comment
-						comment_pos = Array.new
-
-						# get the start index for this comment
-						comment_pos[0] = match_data.begin(1)
-
-						# check if the "//" found is an actual inline comment
-						if aux_str.slice(comment_pos[0]-5...comment_pos[0]).match(/http:/) != nil or aux_str.slice(comment_pos[0]-6...comment_pos[0]).match(/https:/) != nil
-							# it isn't, so ignore this "//"
-							# advance the starting index for the next regex search to after this "//"
-							regex_start = comment_pos[0] + 1
-						else
-							# it is
-							# find the end of the next inline comment -> either the 1st line break or the end of this chunk of text
-							regex_match = aux_str.match(@@re_line_break_, comment_pos[0])
-
-							# check if any line breaks were found after this comment's start index
-							if regex_match === nil
-								# no
-								# this inline comment ends at this iteration chunk's text end
-								comment_pos[1] = aux_str.length - 1
-							else
-								# yes
-								# this inline comment ends at that line break's index
-								comment_pos[1] = regex_match.begin(1)
-							end
-
-							# edit the text by removing this inline comment
-							aux_str = aux_str.slice(0...comment_pos[0]) + aux_str.slice(comment_pos[1]..-1)
-						end
-
-						# search for the next inline comment
-						match_data = aux_str.match(@@re_inline_comment_, regex_start)
-					end
-
-					# stores this iteration chunk's text in slices
-					# those slices are formed by spliting the text across the multiline comments
-					# this allows for different processing to be done to the comments
-					# and to the non-comment text
-					text_slices = Array.new
-
-					# loop while there are multiline comments to process
-					match_data = aux_str.match(@@re_multiline_comment_start_)
-					while match_data != nil
-						# stores the start and end indexes of this comment
-						comment_pos = Array.new
-
-						# get the start index for this comment
-						comment_pos[0] = match_data.begin(1)
-
-						# get the end index for this comment
-						comment_pos[1] = aux_str.index(@@re_multiline_comment_end_)
-
-						# check if this comments end was found
-						if comment_pos[1] === nil
-							# it wasn't
-							# assume the comment ends at the end of the text
-							comment_pos[1] = aux_str.length - 1
-
-							# print error message
-							@cli_obj.printStr("=> WARNING: In the file \"#{file_path}\", there is a multiline comment that doesn't have an explicit end symbol", true)
-						else
-							# it was -> advance the index to after the comment's end characters
-							comment_pos[1] += 1
-						end
-
-						# store the non-comment text
-						text_slices.push({
-							:value => aux_str.slice(0...comment_pos[0]),
-							:type => :normal
-						})
-
-						# get the 2 characters after this comment's start characters
-						comment_substr = aux_str.slice(comment_pos[0]+2, 2)
-
-						# check if those 2 characters indicate this comment is to be kept as is
-						if comment_substr.match("^#{@@multiline_comment_keep_intact_}$") != nil
-							# yes
-							# store this comment's content, but remove the characters used to indicate
-							# the comment is to be kept
-							comment_value = aux_str.slice(comment_pos[0], 2) + aux_str.slice(comment_pos[0]+4..comment_pos[1])
-
-							# store this comment type
-							comment_type = :comment_intact
-						# check if those 2 characters indicate this comment is to be kept, but collapsed to 1 line
-						elsif comment_substr.match("^#{@@multiline_comment_keep_1line_}") != nil
-							# yes
-							# store this comment's content, but remove the characters used to indicate
-							# the comment is to be kept
-							comment_value = aux_str.slice(comment_pos[0], 2) + aux_str.slice(comment_pos[0]+3..comment_pos[1])
-
-							# store this comment type
-							comment_type = :comment_collapse
-						else
-							# this comment is to be removed
-							comment_value = nil
-							comment_type = nil
-
-						end
-
-						# check if this comment is to be kept
-						if comment_type != nil
-							# it is, so store it's contents
-							text_slices.push({
-								:value => comment_value,
-								:type => comment_type
-							})
-						end
-
-						# edit the text by removing this comment
-						aux_str = aux_str.slice(comment_pos[1]+1..-1)
-
-						# search for the next multiline comment
-						match_data = aux_str.match(@@re_multiline_comment_start_)
-					end
-
-					# store the last non-comment text, if the loop run at least once, or the entire
-					# chunk, if the loop didn't run
+					# store the non-comment text
 					text_slices.push({
-						:value => aux_str,
+						:value => text.slice(0...comment_pos[0]),
 						:type => :normal
 					})
 
-					# in preparation for the removal of selected whitespaces
-					# convert the no whitespace characters into a string ready for regex
-					no_whsp_chars_str = Regexp.escape(no_whsp_chars.join("Q")).gsub(/Q/, "|")
+					# get the 2 characters after this comment's start characters
+					comment_substr = text.slice(comment_pos[0]+2, 2)
 
-					# reset this variable to store the rebuild string
-					aux_str = ""
+					# check if those 2 characters indicate this comment is to be kept as is
+					if comment_substr.match("^#{@@multiline_comment_keep_intact_}$") != nil
+						# yes
+						# store this comment's content, but remove the characters used to indicate
+						# the comment is to be kept
+						comment_value = text.slice(comment_pos[0], 2) + text.slice(comment_pos[0]+4..comment_pos[1])
 
-					# loop through each part of this iteration chunk's text and reconstruct it
-					# for each part do the necessary treatment, depending if it's a comment or not
-					text_slices.each { |text_slice|
-						# check if this slice is to be processed
-						if text_slice[:type] != :comment_intact
-							# it is
-							# remove all tabs
-							text_slice[:value].gsub!(/\t/, "")
+						# store this comment type
+						comment_type = :comment_intact
+					# check if those 2 characters indicate this comment is to be kept, but collapsed to 1 line
+					elsif comment_substr.match("^#{@@multiline_comment_keep_1line_}") != nil
+						# yes
+						# store this comment's content, but remove the characters used to indicate
+						# the comment is to be kept
+						comment_value = text.slice(comment_pos[0], 2) + text.slice(comment_pos[0]+3..comment_pos[1])
 
-							# process line breaks
-							# check if this slice is a comment to be kept, but collapsed into 1 line
-							if text_slice[:type] == :comment_collapse
-								# it is, replace all line breaks with a white space
-								text_slice[:value].gsub!(@@re_line_break_, " ")
-							else
-								# it isn't, so remove all line breaks
-								text_slice[:value].gsub!(@@re_line_break_, "")
-							end
+						# store this comment type
+						comment_type = :comment_collapse
+					else
+						# this comment is to be removed
+						comment_value = nil
+						comment_type = nil
 
-							# replace all multiple whitespaces (2+ whitespaces) with a single whitespace
-							text_slice[:value].gsub!(/[[:space:]]{2,}/, " ")
+					end
 
-							# remove whitespaces before specific characters
-							text_slice[:value].gsub!(/[[:space:]](#{no_whsp_chars_str})/, "\\1")
+					# check if this comment is to be kept
+					if comment_type != nil
+						# it is, so store it's contents
+						text_slices.push({
+							:value => comment_value,
+							:type => comment_type
+						})
+					end
 
-							# remove whitespaces after specific characters
-							text_slice[:value].gsub!(/(#{no_whsp_chars_str})[[:space:]]/, "\\1")
-						end
-
-						# add this text slice to the rebuilt string
-						aux_str += text_slice[:value]
-					}
-
-					# adjust control variables for the next iteration chunk's text
-					# next iteration will start searching for a string after this iteration's end index
-					chunk_pos_i = chunk_pos_e
+					# edit the text by removing this comment
+					text = text.slice(comment_pos[1]+1..-1)
 				end
 
-				# add this iteration's text chunk to the minimized text
-				min_str += aux_str
-			end
+				# store the last non-comment text, if the loop run at least once, or the entire
+				# chunk, if the loop didn't run
+				text_slices.push({
+					:value => text,
+					:type => :normal
+				})
+
+				# in preparation for the removal of selected whitespaces
+				# convert the no whitespace characters into a string ready for regex
+				no_whsp_chars_str = Regexp.escape(no_whsp_chars.join("Q")).gsub(/Q/, "|")
+
+				# reset this variable to store the rebuild string
+				text = ""
+
+				# loop through each part of this iteration chunk's text and reconstruct it
+				# for each part do the necessary treatment, depending if it's a comment or not
+				text_slices.each { |text_slice|
+					# check if this slice is to be processed
+					if text_slice[:type] != :comment_intact
+						# it is
+						# remove all tabs
+						text_slice[:value].gsub!(/\t/, "")
+
+						# process line breaks
+						# check if this slice is a comment to be kept, but collapsed into 1 line
+						if text_slice[:type] == :comment_collapse
+							# it is, replace all line breaks with a white space
+							text_slice[:value].gsub!(@@re_line_break_, " ")
+						else
+							# it isn't, so remove all line breaks
+							text_slice[:value].gsub!(@@re_line_break_, "")
+						end
+
+						# replace all multiple whitespaces (2+ whitespaces) with a single whitespace
+						text_slice[:value].gsub!(/[[:space:]]{2,}/, " ")
+
+						# remove whitespaces before specific characters
+						text_slice[:value].gsub!(/[[:space:]](#{no_whsp_chars_str})/, "\\1")
+
+						# remove whitespaces after specific characters
+						text_slice[:value].gsub!(/(#{no_whsp_chars_str})[[:space:]]/, "\\1")
+					end
+
+					# add this text slice to the rebuilt string
+					text += text_slice[:value]
+				}
+
+				# return the transformed text
+				return(text)
+			}
+
+			# call the method that will apply the minimization code to all the parts
+			# of the file's content that are not inside a string, a regex or a comment
+			min_str = transformFile(file_path, lambda_func, "")
 
 			# replace the content of the minimized file with the minimized text
 			if IO.write(file_path, min_str) == 0
@@ -3140,6 +3113,219 @@ class Application
 
 			# at this point the minimization was successful (even if the auxiliary file couldn't be updated)
 			return(true)
+		end
+
+		# receives an absolute path to a file that will be read and its contents crawled
+		# any chunks of its content that are not inside a string or a regex will be passed
+		# through the provided anonymous function
+		# OPTIONALY: can receive the specific text to be transformed, in which case the file
+		# at file_path will not be read
+		# returns a string with the file's content after the transformation
+		# NOTE: the anonymous function provided expects 2 parameters - the absolute path
+		# 			to the file being transformed and the string to transform -
+		# 			and should return the transformed string
+		def transformFile(file_path, lambda_func, text = "")
+			# check if a specific text to be transformed was provided
+			if !text.empty?
+				# it was
+				file_contents = text
+			else
+				# it wasn't
+				# open the file and read its contents
+				file_contents = IO.read(file_path, mode: "r")
+			end
+
+			# stores the minimized text as it is built
+			transformed_str = ""
+
+			# stores temporary parts of the file for processing
+			aux_str = ""
+
+			# stores this iteration's text chunk starting index
+			chunk_pos_i = 0
+			# stores this iteration's text chunk ending index
+			chunk_pos_e = 0
+
+			# stores whether an iteration is handling a string
+			inside_str = false
+
+			# check if the first character in the file is a single or double quote or a ` (ES6 string)
+			if file_contents[0].match(/[\'\"\`]/) != nil
+				# it is, so the file starts with a string
+				inside_str = true
+			end
+
+			# stores whether an iteration is handling a regex
+			inside_regex = false
+
+			# loop while there's content to process
+			# NOTE: the logic used is based on the existance of strings and regexps in the file
+			# 		since strings/regexps are not to be processed, the code will search for the start
+			# 		of the next string/regexp and process any content that is in between
+			while chunk_pos_e < file_contents.length - 1
+				# calculate the index to start searching the next iteration's start index
+				search_start_index = chunk_pos_e + 1
+
+				# check if this iteration's chunk is handling a string or a regex
+				if inside_str || inside_regex
+					# it is
+					# check if its handling a string
+					if inside_str
+						# it is
+						# find the relevant closing quote to the currently open string
+						# NOTE: the closing quote has to be of the same type as the opening quote (single or double) or
+						# NOTE: the character at index "chunk_pos_e" is the currently open string's quote
+						# the relevant quotes are the ones either not precided by a back slash OR with an even number
+						# of backslashes preciding it -> in both cases the quote is not escaped
+
+						# find the closest non-escaped quote with preciding backslashes
+						match_even_slash = file_contents[search_start_index..-1].match("[^\\\\](?:\\\\\\\\)+(#{file_contents[chunk_pos_e]})")
+
+						# check if the character at index "search_start_index" is the relevant closing quote
+						# this catches an empty string
+						if file_contents[search_start_index] === file_contents[chunk_pos_e]
+							# it is -> this string in the source file is an empty string ("" or '')
+							match_no_slash_re = "(#{file_contents[chunk_pos_e]})"
+						else
+							# it isn't, so find the closest relevant quote
+							match_no_slash_re = "[^\\\\](#{file_contents[chunk_pos_e]})"
+						end
+
+						# find the closest non-escaped quote with preciding backslashes
+						match_no_slash = file_contents[search_start_index..-1].match(match_no_slash_re)
+
+						# check if a quote was found
+						if match_no_slash === nil && match_even_slash === nil
+							# it wasn't, so set the end index to the EOF
+							chunk_pos_e = file_contents.length
+						# check if only a quote precided by an even number of backslashes was found
+						elsif match_no_slash === nil
+							# it was, so calculate the index in "file_contents" of the quote found
+							# NOTE: the capture group's index already compensates for the fact that the full match's index
+							# 		is offset by the number of backslashes before the quote
+							chunk_pos_e = search_start_index + match_even_slash.begin(1)
+						# check if only a quote precided by no backslashes was found
+						elsif match_even_slash === nil
+							# it was, so calculate the index in "file_contents" of the quote found
+							# NOTE: the capture group's index already compensates for the fact that the full match's index
+							# 		is offset by the number of backslashes before the quote
+							chunk_pos_e = search_start_index + match_no_slash.begin(1)
+						else
+							# both cases of a quote were found
+							# determine the one that comes first
+							if match_no_slash.begin(1) <= match_even_slash.begin(1)
+								# the quote with no preciding backslashes comes first
+								quote_index = match_no_slash.begin(1)
+							else
+								# the quote with even number of preciding backslashes comes first
+								quote_index = match_even_slash.begin(1)
+							end
+
+							# NOTE: the capture group's index already compensates for the fact that the full match's index
+							# 		is offset by the number of backslashes before the quote
+							chunk_pos_e = search_start_index + quote_index
+						end
+					else
+						# it isn't, its handling a regex
+						chunk_pos_e += file_contents[chunk_pos_e..-1].match(@@re_regex_)[1].length - 1
+					end
+
+					# don't change any of the text inside a string or regex
+					# get this iteration's text chunk, including both the start and end
+					# string/regex delimiters
+					aux_str = file_contents[chunk_pos_i..chunk_pos_e]
+
+					# check if the quote or regex found as the end for this iteration's text chunk is inside a comment
+					if insideComment?(aux_str)
+						# it is, so ignore it
+						next
+					end
+
+					# adjust control variables for next iteration
+					# since this iteration was handling a string/regex, then the next iteration
+					# won't be handling a string/regex
+					inside_str = false
+					inside_regex = false
+
+					# the next iteration will start in the character after this iteration's
+					# string/regex end delimiter
+					chunk_pos_i = chunk_pos_e + 1
+				else
+					# it isn't inside a string or regex
+					# find the next single or double quote and the next regex in the source file
+					# NOTE: this pattern doesn't match a string in index zero of the file, but if there
+					# 		is a string at index zero, this loop starts with inside_str = true
+					str_index = file_contents.index(/[^\\][\"\'\`]/, search_start_index)
+					re_index = file_contents.index(@@re_regex_, search_start_index)
+
+					# check if a quote or regex was found
+					if str_index === nil && re_index === nil
+						# it wasn't
+						# set the end index to the EOF
+						chunk_pos_e = file_contents.length
+					else
+						# stores if this iteration stops on a string
+						ends_on_str = false
+
+						# check if only a string was found
+						if re_index === nil
+							# it was
+							ends_on_str = true
+						# check if both a string and a regex were found
+						# and if the string comes first
+						elsif str_index != nil && str_index <= re_index
+							# the string comes first
+							ends_on_str = true
+						end
+
+						# check if this iteration ends on a string
+						if ends_on_str
+							# it does
+							# add 1 since the index of the match starts on the character before the quote
+							# due to the regex pattern being used
+							chunk_pos_e = str_index + 1
+
+							# the next iteration will deal with a string
+							inside_str = true
+						else
+							# it doesn't, it ends on a regex
+							# set the end index to the regex's start delimiter
+							chunk_pos_e = re_index
+
+							# the next iteration will deal with a regex
+							inside_regex = true
+						end
+					end
+
+					# get this iteration's text chunk, excluding the quote at the end of the chunk
+					aux_str = file_contents[chunk_pos_i...chunk_pos_e]
+
+					# check if the quote or regex found as the end for this iteration's text chunk is inside a comment
+					if insideComment?(aux_str)
+						# it is
+						# the next iteration won't be inside a string or a regex, since the found delimiter is going
+						# to be ignored
+						inside_str = false
+						inside_regex = false
+
+						# ignore it
+						next
+					end
+
+					# execute the necessary transformation to this iteration chunk's text
+					aux_str = lambda_func.call(file_path, aux_str)
+
+					# adjust control variables for the next iteration chunk's text
+					# next iteration will start searching for a string after this iteration's end index
+					chunk_pos_i = chunk_pos_e
+				end
+
+				# add this iteration's text chunk to the minimized text
+				transformed_str += aux_str
+			end
+
+			# return the transformed string
+			return(transformed_str)
 		end
 
 		# checks if the minimizeFile()'s iteration end index (quote or regex) is inside a comment

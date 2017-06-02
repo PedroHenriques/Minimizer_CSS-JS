@@ -314,6 +314,8 @@ var re=/ 3 + Math.randdom() * 10 /gi;
 
 ## TypeScript Files  
 
+**IMPORTANT:** This program requires TypeScript to be installed as a **global** node module.  
+
 This program supports TypeScript files, which can be bundled together with other TypeScript and JavaScript files.  
 
 TypeScript files, unlike JavaScript files, will not be captured by watch rule paths automatically just by adding the `ts` option to that rule.  
@@ -324,7 +326,9 @@ The only TypeScript files that will be considered relevant for a watch rule are 
 The program will crawl all the entry point files and build a list of all files being imported by them, as well as crawling those imports and so on, building a complete import chain.  
 This allows the program to scan every file in the import chain and if any of them has been changed, the respective entry point file will be recompiled, by the TypeScript compiler, and any output files from watch rules that use that entry point file will be rebuilt.  
 
-The way the program resolves module imports is by applying the same rules used by the TypeScript compiler, outlined in the [documentation](https://www.typescriptlang.org/docs/handbook/module-resolution.html).  
+The way the program resolves module imports is by applying the same rules used by NodeJS, outlined in the [documentation](https://nodejs.org/dist/latest-v8.x/docs/api/modules.html#modules_all_together), with the following caveats:  
+- Files with the `.node` extension are not considered  
+- Imports of NodeJS core modules are not considered
 
 In terms of the compilation options passed to the TypeScript compiler, the program will use the following priority:  
 

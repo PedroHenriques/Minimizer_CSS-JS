@@ -1,5 +1,21 @@
 # RELEASE NOTES  
 
+## Version 3.1.0  
+
+### Changes  
+
+- Added support for ES6 compiled TypeScript files, which can have the imported modules stored in a `const` or a `let` besides the ES5 default of `var`
+- Added support for ES6 "template literal" strings
+- Changed the module import rules from using TypeScript's rules to using NodeJS's rules. This allows for better support when handling external dependencies
+
+### Bug Fixes  
+
+- Fixed the following bugs in the code that creates the `*.combined.js` file:  
+
+  1. When using variables or functions that are exported by that module in an operation other than assignments and some logical comparisons, the `exports.` wasn't being analyzed and processed being left in the `*.combined.js` file
+  2. When importing a module's default export, the references to the variable where that import was being stored weren't being replaced by the name of the imported property. Instead a call to `default(` was being left in their place
+  3. When handling the use of variables that are being exported by that module in the global scope, the first time each variable is used the `exports.` has to be replaced with a `var ` since it is there that it is being declared
+
 ## Version 3.0.0  
 
 ### Changes  
