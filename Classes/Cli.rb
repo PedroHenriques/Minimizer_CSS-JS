@@ -1,6 +1,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # 																									 	#
-# Bundler and Minimizer for Web files v3.1.0				 	#
+# Bundler and Minimizer for Web files v3.1.1				 	#
 # 																										#
 # Copyright 2017, PedroHenriques 							 				#
 # http://www.pedrojhenriques.com 							 				#
@@ -56,7 +56,7 @@ class Cli
 		@caller_obj = caller_obj
 
 		# print the welcome message
-		printStr("Welcome to the CSS and JS Minimizer program!\nType HELP for a list of commands\n", false)
+		printStr("Welcome to the Web Bundler and Minimizer program!\nType HELP for a list of commands\n", false)
 	end
 
 	# receives a string to be printed to the console

@@ -1,6 +1,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # 																									 	#
-# Bundler and Minimizer for Web files v3.1.0				 	#
+# Bundler and Minimizer for Web files v3.1.1				 	#
 # 																										#
 # Copyright 2017, PedroHenriques 							 				#
 # http://www.pedrojhenriques.com 							 				#
@@ -337,7 +337,7 @@ class Application
 	# calls for the print of the program's outro message
 	def printOutroMsg()
 		# print outro message
-		@cli_obj.printStr("\n=> Thank you for using this application!\nFollow this application at https://github.com/PedroHenriques/Minimizer_CSS-JS\n", false)
+		@cli_obj.printStr("\n=> Thank you for using this application!\nFollow this application at https://github.com/PedroHenriques/Web_Bundler_Minimizer\n", false)
 	end
 
 	private
@@ -1621,22 +1621,24 @@ class Application
 						callback_return = callback.call(crawl_path, re_match)
 
 						# check if the lambda function returned a failure or an invalid data type
-						if callback_return === false || !callback_return.class.to_s.eql?("String")
+						if callback_return === false || !callback_return.class.to_s.eql?("Array")
 							# it did
 							# something went wrong while executing the lambda function
 							# return a failure
 							return(false)
 						else
 							# it didn't
-							# check if the file found hasn't been encountered already
-							if !imported_abs_paths.include?(callback_return) && !file_queue.include?(callback_return)
-								# it hasn't
-								# add it to the queue
-								file_queue.push(callback_return)
-							end
+							callback_return.each { |file_path|
+								# check if the file found hasn't been encountered already
+								if !imported_abs_paths.include?(file_path) && !file_queue.include?(file_path)
+									# it hasn't
+									# add it to the queue
+									file_queue.push(file_path)
+								end
 
-							# add the file found to the crawled file's array of imported files
-							@file_crawl_data[crawl_path][:imports].push(callback_return)
+								# add the file found to the crawled file's array of imported files
+								@file_crawl_data[crawl_path][:imports].push(file_path)
+							}
 						end
 
 						# change file_content to have all the text after this match
@@ -1808,7 +1810,9 @@ class Application
 		def crawlTypeScript(entry_path, output_path_parts)
 			# build the lambda function that will be applied to each capture group
 			lambda_func = lambda { |crawl_path, re_match|
-				return(resolveNodeImportPath(crawl_path, re_match[1], [".tsx", ".ts"]))
+				path = resolveNodeImportPath(crawl_path, re_match[1], [".tsx", ".ts"])
+
+				return(path.class.to_s.eql?("String") ? [path] : path)
 			}
 
 			# check if a path to a tsconfig.json file was provided in the configuration file

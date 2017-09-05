@@ -1,5 +1,16 @@
 # RELEASE NOTES  
 
+## Version 3.1.1  
+
+### Changes  
+
+- Updated the intro and outro messages
+- Renamed the batch file
+
+### Bug Fixes  
+
+- Fixed bug that was preventing the program from correctly searching SCSS and SASS entry point files for their imports
+
 ## Version 3.1.0  
 
 ### Changes  
